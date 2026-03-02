@@ -169,3 +169,92 @@ export function encodeString(text: string): Uint8Array {
 export function encodeUint64(num: number): Uint8Array {
   return algosdk.encodeUint64(num);
 }
+
+export async function createApplication(
+  sponsorAddress: string,
+  studentWallet: string,
+  proposedBudgetMicroalgos: number,
+  totalMilestones: number,
+  signTransaction: (txns: algosdk.Transaction[]) => Promise<Uint8Array[]>
+): Promise<{ txId: string; appId: number }> {
+  const configuredAppId = Number(process.env.NEXT_PUBLIC_TRUSTFUNDX_APP_ID || 0);
+
+  if (!configuredAppId) {
+    return {
+      txId: `DEMO-CREATE-${Date.now()}`,
+      appId: 900000000 + (Date.now() % 1000000),
+    };
+  }
+
+  const appCallTxn = await createAppCallTxn(sponsorAddress, configuredAppId, [
+    encodeString('create_application'),
+    new Uint8Array(algosdk.decodeAddress(studentWallet).publicKey),
+    encodeUint64(proposedBudgetMicroalgos),
+    encodeUint64(totalMilestones),
+  ]);
+
+  const signedTxns = await signTransaction([appCallTxn]);
+  const algodClient = getAlgodClient();
+  const result = await algodClient.sendRawTransaction(signedTxns).do();
+
+  await waitForConfirmation(result.txid);
+
+  return {
+    txId: result.txid,
+    appId: configuredAppId,
+  };
+}
+
+export async function fundContract(
+  sponsorAddress: string,
+  appId: number,
+  amountMicroalgos: number,
+  signTransaction: (txns: algosdk.Transaction[]) => Promise<Uint8Array[]>
+): Promise<string> {
+  if (appId >= 900000000) {
+    return `DEMO-FUND-${Date.now()}`;
+  }
+
+  const algodClient = getAlgodClient();
+  const appAddress = algosdk.getApplicationAddress(appId).toString();
+
+  const paymentTxn = await createPaymentTxn(
+    sponsorAddress,
+    appAddress,
+    amountMicroalgos,
+    'Fund escrow'
+  );
+  const appCallTxn = await createAppCallTxn(sponsorAddress, appId, [encodeString('fund_contract')]);
+
+  const grouped = [paymentTxn, appCallTxn];
+  algosdk.assignGroupID(grouped);
+
+  const signedTxns = await signTransaction(grouped);
+  const result = await algodClient.sendRawTransaction(signedTxns).do();
+  await waitForConfirmation(result.txid);
+
+  return result.txid;
+}
+
+export async function approveMilestone(
+  sponsorAddress: string,
+  appId: number,
+  milestoneIndex: number,
+  signTransaction: (txns: algosdk.Transaction[]) => Promise<Uint8Array[]>
+): Promise<string> {
+  if (appId >= 900000000) {
+    return `DEMO-APPROVE-${milestoneIndex}-${Date.now()}`;
+  }
+
+  const txn = await createAppCallTxn(sponsorAddress, appId, [
+    encodeString('approve_milestone'),
+    encodeUint64(milestoneIndex),
+  ]);
+
+  const signedTxn = await signTransaction([txn]);
+  const algodClient = getAlgodClient();
+  const result = await algodClient.sendRawTransaction(signedTxn).do();
+  await waitForConfirmation(result.txid);
+
+  return result.txid;
+}

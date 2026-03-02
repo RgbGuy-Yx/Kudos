@@ -1,55 +1,65 @@
+"use client";
+import { useThemeContext } from "@/contexts/ThemeContext";
+import { navLinks } from "@/data/navLinks";
 import Image from "next/image";
 import Link from "next/link";
 
 export default function Footer() {
+    const { theme } = useThemeContext();
+
     return (
-        <footer className="relative overflow-hidden px-6 md:px-16 lg:px-24 xl:px-32 w-full text-sm text-slate-500 bg-white pt-10">
+        <footer className="relative px-6 md:px-16 lg:px-24 xl:px-32 mt-40 w-full dark:text-slate-50">
             <Image
-                src="/assets/logo.svg"
-                alt="Logo"
-                width={400}
-                height={400}
-                className="hidden md:block absolute -bottom-30 -left-80 opacity-5 w-full h-full pointer-events-none"
+                className="absolute max-w-4xl w-full h-auto -mt-30 max-md:px-4 right-0 md:right-16 lg:right-24 xl:right-32 top-0 pointer-events-none"
+                src={theme === "dark" ? "/assets/landing-text-dark.svg" : "/assets/landing-text-light.svg"}
+                alt="landing"
+                width={930}
+                height={340}
+                priority
             />
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-14">
-                <div className="sm:col-span-2 lg:col-span-1">
-                    <h3 className="text-xl font-bold text-gray-900">Kudos</h3>
-                    <p className="text-sm/7 mt-6">Kudos enables transparent student grant funding through milestone-based escrow on Algorand with sponsor approval workflows.</p>
+
+            <div className="flex flex-col md:flex-row justify-between w-full gap-10 border-b border-gray-200 dark:border-slate-700 pb-6">
+                <div className="md:max-w-114">
+                    <Link href="/">
+                        <Image
+                            className="h-9 md:h-9.5 w-auto shrink-0"
+                            src={theme === "dark" ? "/assets/logo-light.svg" : "/assets/logo-dark.svg"}
+                            alt="Kudos"
+                            width={140}
+                            height={40}
+                            priority
+                        />
+                    </Link>
+                    <p className="mt-6">
+                        Kudos helps sponsors and students run transparent milestone-based grants on Algorand with escrow-backed releases and proof-driven approvals.
+                    </p>
                 </div>
-                <div className="flex flex-col lg:items-center lg:justify-center">
-                    <div className="flex flex-col text-sm space-y-2.5">
-                        <h2 className="font-semibold mb-5 text-gray-800">Platform</h2>
-                        <Link className="hover:text-slate-600 transition" href="/signup">Create account</Link>
-                        <Link className="hover:text-slate-600 transition" href="/login">Connect wallet</Link>
-                        <Link className="hover:text-slate-600 transition" href="/dashboard/sponsor">Sponsor dashboard</Link>
-                        <Link className="hover:text-slate-600 transition" href="/dashboard/student">Student dashboard</Link>
+
+                <div className="flex-1 flex items-start md:justify-end gap-20">
+                    <div>
+                        <h2 className="font-semibold mb-5">Company</h2>
+                        <ul className="space-y-2">
+                            {navLinks.map((link, index) => (
+                                <li key={index}>
+                                    <Link href={link.href} className="hover:text-purple-600 transition">
+                                        {link.name}
+                                    </Link>
+                                </li>
+                            ))}
+                        </ul>
                     </div>
-                </div>
-                <div>
-                    <h2 className="font-semibold text-gray-800 mb-5">Ecosystem</h2>
-                    <div className="text-sm space-y-6 max-w-sm">
-                        <p>Algorand smart contracts for milestone escrow.</p>
-                        <p>Pera Wallet authentication and signing.</p>
-                        <p>MongoDB milestone proof storage.</p>
+
+                    <div>
+                        <h2 className="font-semibold mb-5">Get in touch</h2>
+                        <div className="space-y-2">
+                            <p>support@kudos.app</p>
+                            <p>Algorand testnet ready</p>
+                        </div>
                     </div>
                 </div>
             </div>
-            <div className="flex flex-col md:flex-row items-center justify-between gap-4 py-4 border-t mt-6 border-slate-200">
-                <p className="text-center">
-                    Copyright 2026 © Kudos. All Rights Reserved.
-                </p>
-                <div className="flex items-center gap-4">
-                    <Link href="/">
-                        Privacy Policy
-                    </Link>
-                    <Link href="/">
-                        Terms of Service
-                    </Link>
-                    <Link href="/">
-                        Cookie Policy
-                    </Link>
-                </div>
-            </div>
+
+            <p className="pt-4 text-center pb-5">Copyright 2026 © Kudos. All Right Reserved.</p>
         </footer>
     );
-};
+}

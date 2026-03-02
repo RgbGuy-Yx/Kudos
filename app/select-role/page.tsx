@@ -53,7 +53,7 @@ export default function SelectRolePage() {
 
       // Registration successful, redirect to dashboard
       const dashboardRoute = formData.role === 'sponsor' 
-        ? '/dashboard/sponsor' 
+        ? '/sponsor/dashboard' 
         : '/dashboard/student';
       router.push(dashboardRoute);
     } catch (err: any) {

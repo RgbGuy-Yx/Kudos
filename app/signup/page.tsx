@@ -64,7 +64,7 @@ export default function SignupPage() {
 
         // Registration successful, redirect to dashboard
         const dashboardRoute = formData.role === 'sponsor' 
-          ? '/dashboard/sponsor' 
+          ? '/sponsor/dashboard' 
           : '/dashboard/student';
         router.push(dashboardRoute);
       }
@@ -78,70 +78,71 @@ export default function SignupPage() {
   return (
     <>
       <Navbar />
-      <main className="px-4 py-24 md:px-16 lg:px-24 xl:px-32 min-h-[calc(100vh-72px)] flex items-center justify-center">
-        <div className="w-full max-w-5xl grid md:grid-cols-2 border border-gray-200 rounded-2xl overflow-hidden bg-white">
-          <div className="p-8 md:p-10 bg-gray-50 border-b md:border-b-0 md:border-r border-gray-200">
-            <p className="text-sm text-gray-500">Create Account</p>
-            <h1 className="font-domine text-4xl text-gray-900 mt-2">Join Kudos</h1>
-            <p className="mt-4 text-sm/6 text-gray-600">
+      <main className="relative px-4 py-24 md:px-16 lg:px-24 xl:px-32 min-h-[calc(100vh-72px)] flex items-center justify-center bg-[url('/assets/dark-hero-gradient.svg')] bg-no-repeat bg-cover">
+        <div className="absolute inset-0 bg-[#050315]/80" />
+        <div className="relative w-full max-w-5xl grid md:grid-cols-2 border border-slate-700/60 rounded-2xl overflow-hidden bg-slate-900/70 backdrop-blur-sm shadow-2xl shadow-black/30">
+          <div className="p-8 md:p-10 bg-slate-900/80 border-b md:border-b-0 md:border-r border-slate-700/70">
+            <p className="text-sm text-slate-400">Create Account</p>
+            <h1 className="text-4xl font-semibold text-white mt-2">Join Kudos</h1>
+            <p className="mt-4 text-sm/6 text-slate-300">
               Set your profile and role first, then connect your Pera Wallet to activate your sponsor or student dashboard.
             </p>
 
-            <div className="mt-8 space-y-3 text-sm text-gray-600">
+            <div className="mt-8 space-y-3 text-sm text-slate-300">
               <p>Step 1: Profile details + role selection</p>
               <p>Step 2: Wallet connection and registration</p>
             </div>
           </div>
 
           <div className="p-8 md:p-10">
-            <h2 className="text-2xl font-semibold text-gray-900 mb-2">{step === 1 ? 'Profile Setup' : 'Wallet Connection'}</h2>
-            <p className="text-gray-600 mb-6 text-sm">
+            <h2 className="text-2xl font-semibold text-white mb-2">{step === 1 ? 'Profile Setup' : 'Wallet Connection'}</h2>
+            <p className="text-slate-300 mb-6 text-sm">
               {step === 1 ? 'Fill in your details to continue.' : 'Connect your wallet to complete account creation.'}
             </p>
 
             {step === 1 ? (
               <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-slate-200 mb-2">
                 Full Name *
               </label>
               <input
                 type="text"
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-300 focus:border-transparent"
+                className="w-full px-4 py-2 border border-slate-700 bg-slate-950/60 text-slate-100 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none"
                 placeholder="Enter your full name"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-slate-200 mb-2">
                 Email Address *
               </label>
               <input
                 type="email"
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-300 focus:border-transparent"
+                className="w-full px-4 py-2 border border-slate-700 bg-slate-950/60 text-slate-100 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none"
                 placeholder="your.email@example.com"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-slate-200 mb-2">
                 Organization *
               </label>
               <input
                 type="text"
                 value={formData.organization}
                 onChange={(e) => setFormData({ ...formData, organization: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-300 focus:border-transparent"
+                className="w-full px-4 py-2 border border-slate-700 bg-slate-950/60 text-slate-100 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none"
                 placeholder="Your school or company"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-slate-200 mb-2">
                 Select Your Role *
               </label>
               <div className="grid grid-cols-2 gap-3">
@@ -150,57 +151,57 @@ export default function SignupPage() {
                   onClick={() => setFormData({ ...formData, role: 'student' })}
                   className={`p-4 border-2 rounded-lg transition-all ${
                     formData.role === 'student'
-                      ? 'border-gray-700 bg-gray-100 text-gray-900'
-                      : 'border-gray-300 hover:border-gray-400'
+                      ? 'border-purple-500 bg-purple-500/20 text-purple-200'
+                      : 'border-slate-700 text-slate-200 hover:border-slate-500 bg-slate-950/40'
                   }`}
                 >
                   <div className="text-2xl mb-1">🎓</div>
                   <div className="font-semibold">Student</div>
-                  <div className="text-xs text-gray-600 mt-1">Receive funding</div>
+                  <div className="text-xs text-slate-300 mt-1">Receive funding</div>
                 </button>
                 <button
                   type="button"
                   onClick={() => setFormData({ ...formData, role: 'sponsor' })}
                   className={`p-4 border-2 rounded-lg transition-all ${
                     formData.role === 'sponsor'
-                      ? 'border-gray-700 bg-gray-100 text-gray-900'
-                      : 'border-gray-300 hover:border-gray-400'
+                      ? 'border-purple-500 bg-purple-500/20 text-purple-200'
+                      : 'border-slate-700 text-slate-200 hover:border-slate-500 bg-slate-950/40'
                   }`}
                 >
                   <div className="text-2xl mb-1">💼</div>
                   <div className="font-semibold">Sponsor</div>
-                  <div className="text-xs text-gray-600 mt-1">Fund projects</div>
+                  <div className="text-xs text-slate-300 mt-1">Fund projects</div>
                 </button>
               </div>
             </div>
 
             {error && (
-              <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm border border-red-200">
+              <div className="bg-red-500/15 text-red-300 p-3 rounded-lg text-sm border border-red-500/30">
                 {error}
               </div>
             )}
 
             <button
               onClick={handleNext}
-              className="w-full bg-linear-to-b from-gray-600 to-gray-800 hover:from-gray-700 hover:to-gray-900 text-white py-3 rounded-lg font-semibold transition"
+              className="w-full bg-purple-600 hover:bg-purple-700 text-white py-3 rounded-lg font-semibold transition"
             >
               Next: Connect Wallet
             </button>
 
-            <p className="text-center text-sm text-gray-600">
+            <p className="text-center text-sm text-slate-300">
               Already have an account?{' '}
-              <Link href="/login" className="text-gray-900 hover:underline font-semibold">
+              <Link href="/login" className="text-purple-300 hover:text-purple-200 hover:underline font-semibold">
                 Login here
               </Link>
             </p>
           </div>
         ) : (
           <div className="space-y-6">
-            <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-              <p className="text-sm text-gray-800 mb-2">
+            <div className="bg-slate-950/50 p-4 rounded-lg border border-slate-700/70">
+              <p className="text-sm text-slate-200 mb-2">
                 <strong>Step 2:</strong> Connect your Pera Wallet
               </p>
-              <div className="text-xs text-gray-600 space-y-1">
+              <div className="text-xs text-slate-300 space-y-1">
                 <p>✓ Name: {formData.name}</p>
                 <p>✓ Email: {formData.email}</p>
                 <p>✓ Organization: {formData.organization}</p>
@@ -209,19 +210,19 @@ export default function SignupPage() {
             </div>
 
             <div className="text-center">
-              <p className="text-gray-600 mb-4">
+              <p className="text-slate-300 mb-4">
                 Connect your Pera Wallet to complete registration
               </p>
               
               {accountAddress && (
-                  <div className="bg-green-50 text-green-700 p-3 rounded-lg text-sm mb-4 border border-green-200">
+                  <div className="bg-emerald-500/15 text-emerald-300 p-3 rounded-lg text-sm mb-4 border border-emerald-500/30">
                   Connected: {accountAddress.slice(0, 6)}...{accountAddress.slice(-4)}
                 </div>
               )}
             </div>
 
             {error && (
-              <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm border border-red-200">
+              <div className="bg-red-500/15 text-red-300 p-3 rounded-lg text-sm border border-red-500/30">
                 {error}
               </div>
             )}
@@ -229,14 +230,14 @@ export default function SignupPage() {
             <button
               onClick={handleConnectWallet}
               disabled={loading}
-              className="w-full bg-linear-to-b from-gray-600 to-gray-800 hover:from-gray-700 hover:to-gray-900 text-white py-3 rounded-lg font-semibold transition disabled:opacity-60"
+              className="w-full bg-purple-600 hover:bg-purple-700 text-white py-3 rounded-lg font-semibold transition disabled:opacity-60"
             >
               {loading ? 'Connecting...' : 'Connect Pera Wallet'}
             </button>
 
             <button
               onClick={() => setStep(1)}
-              className="w-full bg-gray-200 text-gray-700 py-3 rounded-lg font-semibold hover:bg-gray-300 transition-colors"
+              className="w-full bg-slate-800 text-slate-200 py-3 rounded-lg font-semibold hover:bg-slate-700 transition-colors border border-slate-700"
             >
               Back
             </button>

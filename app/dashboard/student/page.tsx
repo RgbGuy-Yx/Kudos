@@ -7,14 +7,74 @@ import { useEffect, useState } from 'react';
 import {
   getContractGlobalState,
   microalgosToAlgo,
+  algoToMicroalgos,
   ContractState,
 } from '@/lib/algorand';
 import { MilestoneSubmission } from '@/lib/models/Milestone';
+
+interface StudentActiveGrantInfo {
+  id: string;
+  appId: number;
+  sponsorWallet: string;
+  projectTitle: string;
+  proposedBudget: number;
+  milestoneIndex: number;
+  totalMilestones: number;
+}
 
 export default function StudentDashboard() {
   const { user, loading, logout, walletMismatch, isWalletConnected } = useAuth();
   const { accountAddress } = useWallet();
   const router = useRouter();
+
+  const [hasActiveGrant, setHasActiveGrant] = useState<boolean>(false);
+  const [checkingGrant, setCheckingGrant] = useState<boolean>(true);
+  const [studentGrant, setStudentGrant] = useState<StudentActiveGrantInfo | null>(null);
+
+  const [proposalForm, setProposalForm] = useState({
+    title: '',
+    description: '',
+    expectedDeliverables: '',
+    expectedTimeline: '',
+    expectedCost: '',
+    githubLink: '',
+  });
+  const [submittingProposal, setSubmittingProposal] = useState(false);
+  const [submittedProposals, setSubmittedProposals] = useState<
+    Array<{
+      id: string;
+      title: string;
+      description: string;
+      expectedDeliverables?: string;
+      expectedTimeline?: string;
+      expectedCost?: number;
+      githubLink: string;
+      status: string;
+      trustScore?: number;
+      createdAt: string;
+      updatedAt: string;
+    }>
+  >([]);
+  const [loadingProposals, setLoadingProposals] = useState(false);
+  const [notifications, setNotifications] = useState<
+    Array<{
+      id: string;
+      type: string;
+      title: string;
+      message: string;
+      createdAt: string;
+    }>
+  >([]);
+  const [editingProposalId, setEditingProposalId] = useState<string | null>(null);
+  const [savingProposalEdit, setSavingProposalEdit] = useState(false);
+  const [editProposalForm, setEditProposalForm] = useState({
+    title: '',
+    description: '',
+    expectedDeliverables: '',
+    expectedTimeline: '',
+    expectedCost: '',
+    githubLink: '',
+  });
 
   // Contract state
   const [appId, setAppId] = useState<number>(0);
@@ -39,10 +99,83 @@ export default function StudentDashboard() {
     }
   }, [user, loading, router]);
 
+  const fetchStudentActiveGrant = async () => {
+    try {
+      setCheckingGrant(true);
+      const response = await fetch('/api/grants/student-active');
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to check active grant');
+      }
+
+      setHasActiveGrant(!!data.hasActiveGrant);
+      setStudentGrant(data.activeGrant || null);
+
+      if (data.showCreationNotification) {
+        setSuccess('A sponsor has created a new grant for your project. Review it below.');
+      }
+
+      if (data.activeGrant?.appId) {
+        setAppId(data.activeGrant.appId);
+      } else {
+        setAppId(0);
+      }
+    } catch (err: any) {
+      setError(err.message || 'Failed to check active grant');
+      setHasActiveGrant(false);
+      setStudentGrant(null);
+      setAppId(0);
+    } finally {
+      setCheckingGrant(false);
+    }
+  };
+
+  const fetchSubmittedProposals = async () => {
+    try {
+      setLoadingProposals(true);
+      const response = await fetch('/api/projects/my-proposals');
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to fetch submitted proposals');
+      }
+
+      setSubmittedProposals(data.proposals || []);
+    } catch (err: any) {
+      setError(err.message || 'Failed to fetch submitted proposals');
+    } finally {
+      setLoadingProposals(false);
+    }
+  };
+
+  const fetchNotifications = async () => {
+    try {
+      const response = await fetch('/api/notifications/me');
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to fetch notifications');
+      }
+
+      setNotifications(data.notifications || []);
+    } catch (err: any) {
+      setError(err.message || 'Failed to fetch notifications');
+    }
+  };
+
+  useEffect(() => {
+    if (!loading && user?.role === 'student') {
+      fetchStudentActiveGrant();
+      fetchSubmittedProposals();
+      fetchNotifications();
+    }
+  }, [loading, user]);
+
   // Fetch contract state
   const fetchContractState = async () => {
     if (!appId || appId === 0) {
-      setError('Please enter a valid Application ID');
+      setError('No active grant found for this student');
       return;
     }
     
@@ -50,6 +183,21 @@ export default function StudentDashboard() {
     setError('');
     
     try {
+      if (studentGrant && appId >= 900000000) {
+        setContractState({
+          escrowBalance: algoToMicroalgos(studentGrant.proposedBudget),
+          currentMilestone: studentGrant.milestoneIndex,
+          totalAmount: algoToMicroalgos(studentGrant.proposedBudget),
+          totalMilestones: studentGrant.totalMilestones,
+          sponsorAddress: studentGrant.sponsorWallet,
+          studentAddress: user?.walletAddress || '',
+          isActive: true,
+          lastUpdated: Date.now(),
+        });
+        await fetchMilestones();
+        return;
+      }
+
       const state = await getContractGlobalState(appId);
       setContractState(state);
       
@@ -101,8 +249,25 @@ export default function StudentDashboard() {
 
   // Submit milestone
   const handleSubmitMilestone = async () => {
-    if (!submissionForm.milestoneIndex || !submissionForm.proofLink || !submissionForm.description) {
-      setError('Please fill all fields');
+    if (!submissionForm.milestoneIndex || !submissionForm.description) {
+      setError('Please fill all required fields');
+      return;
+    }
+
+    if (!submissionForm.proofLink) {
+      setError('Please provide a proof link');
+      return;
+    }
+
+    const milestoneNumber = parseInt(submissionForm.milestoneIndex, 10);
+    if (!Number.isInteger(milestoneNumber) || milestoneNumber <= 0) {
+      setError('Milestone number must start from 1');
+      return;
+    }
+
+    const milestoneIndex = milestoneNumber - 1;
+    if (contractState && milestoneIndex >= contractState.totalMilestones) {
+      setError(`Milestone number cannot exceed ${contractState.totalMilestones}`);
       return;
     }
 
@@ -115,7 +280,7 @@ export default function StudentDashboard() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           appId,
-          milestoneIndex: parseInt(submissionForm.milestoneIndex),
+          milestoneIndex,
           proofLink: submissionForm.proofLink,
           description: submissionForm.description,
         }),
@@ -126,7 +291,11 @@ export default function StudentDashboard() {
       if (response.ok) {
         setSuccess('Milestone submitted successfully!');
         setShowSubmitModal(false);
-        setSubmissionForm({ milestoneIndex: '', proofLink: '', description: '' });
+        setSubmissionForm({
+          milestoneIndex: '',
+          proofLink: '',
+          description: '',
+        });
         await fetchMilestones();
       } else {
         setError(data.error || 'Failed to submit milestone');
@@ -135,6 +304,137 @@ export default function StudentDashboard() {
       setError('Failed to submit milestone: ' + err.message);
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleSubmitProposal = async () => {
+    const {
+      title,
+      description,
+      expectedDeliverables,
+      expectedTimeline,
+      expectedCost,
+      githubLink,
+    } = proposalForm;
+
+    if (!title || !description || !expectedDeliverables || !expectedTimeline || !expectedCost || !githubLink) {
+      setError('Please fill all proposal fields');
+      return;
+    }
+
+    setSubmittingProposal(true);
+    setError('');
+
+    try {
+      const response = await fetch('/api/projects/submit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title,
+          description,
+          expectedDeliverables,
+          expectedTimeline,
+          expectedCost: Number(expectedCost),
+          githubLink,
+        }),
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to submit proposal');
+      }
+
+      setSuccess('Proposal submitted successfully! Sponsors can now view your project card.');
+      setProposalForm({
+        title: '',
+        description: '',
+        expectedDeliverables: '',
+        expectedTimeline: '',
+        expectedCost: '',
+        githubLink: '',
+      });
+      await fetchSubmittedProposals();
+    } catch (err: any) {
+      setError(err.message || 'Failed to submit proposal');
+    } finally {
+      setSubmittingProposal(false);
+    }
+  };
+
+  const handleStartEditProposal = (proposal: {
+    id: string;
+    title: string;
+    description: string;
+    expectedDeliverables?: string;
+    expectedTimeline?: string;
+    expectedCost?: number;
+    githubLink: string;
+  }) => {
+    setEditingProposalId(proposal.id);
+    setEditProposalForm({
+      title: proposal.title || '',
+      description: proposal.description || '',
+      expectedDeliverables: proposal.expectedDeliverables || '',
+      expectedTimeline: proposal.expectedTimeline || '',
+      expectedCost: proposal.expectedCost ? String(proposal.expectedCost) : '',
+      githubLink: proposal.githubLink || '',
+    });
+  };
+
+  const handleUpdateProposal = async () => {
+    if (!editingProposalId) return;
+
+    const {
+      title,
+      description,
+      expectedDeliverables,
+      expectedTimeline,
+      expectedCost,
+      githubLink,
+    } = editProposalForm;
+
+    if (!title || !description || !expectedDeliverables || !expectedTimeline || !expectedCost || !githubLink) {
+      setError('Please fill all proposal fields before saving');
+      return;
+    }
+
+    setSavingProposalEdit(true);
+    setError('');
+
+    try {
+      const response = await fetch(`/api/projects/my-proposals/${editingProposalId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title,
+          description,
+          expectedDeliverables,
+          expectedTimeline,
+          expectedCost: Number(expectedCost),
+          githubLink,
+        }),
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to update proposal');
+      }
+
+      setSuccess('Proposal updated successfully');
+      setEditingProposalId(null);
+      setEditProposalForm({
+        title: '',
+        description: '',
+        expectedDeliverables: '',
+        expectedTimeline: '',
+        expectedCost: '',
+        githubLink: '',
+      });
+      await fetchSubmittedProposals();
+    } catch (err: any) {
+      setError(err.message || 'Failed to update proposal');
+    } finally {
+      setSavingProposalEdit(false);
     }
   };
 
@@ -273,6 +573,32 @@ export default function StudentDashboard() {
           </div>
         )}
 
+        {notifications.length > 0 && (
+          <div className="mb-6 bg-white rounded-lg shadow p-6">
+            <h3 className="text-lg font-bold text-gray-800 mb-3">Notifications</h3>
+            <div className="space-y-3">
+              {notifications.slice(0, 5).map((item) => (
+                <div
+                  key={item.id}
+                  className={`rounded-lg border p-3 ${
+                    item.type === 'MILESTONE_REJECTED'
+                      ? 'border-red-200 bg-red-50'
+                      : item.type === 'MILESTONE_APPROVED'
+                        ? 'border-green-200 bg-green-50'
+                        : 'border-blue-200 bg-blue-50'
+                  }`}
+                >
+                  <p className="text-sm font-semibold text-gray-900">{item.title}</p>
+                  <p className="text-sm text-gray-700 mt-1">{item.message}</p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    {new Date(item.createdAt).toLocaleString()}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* User Info Card */}
         <div className="bg-white rounded-lg shadow p-6 mb-6">
           <h2 className="text-2xl font-bold text-gray-800 mb-4">Welcome, Student!</h2>
@@ -306,31 +632,242 @@ export default function StudentDashboard() {
           </div>
         </div>
 
-        {/* App ID Input */}
-        <div className="bg-white rounded-lg shadow p-6 mb-6">
-          <h3 className="text-xl font-bold text-gray-800 mb-4">Your Grant Contract</h3>
-          <div className="flex gap-4 items-end">
-            <div className="flex-1">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Application ID
-              </label>
-              <input
-                type="number"
-                value={appId}
-                onChange={(e) => setAppId(parseInt(e.target.value) || 0)}
-                placeholder="Enter your grant app ID"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent"
-              />
+        {/* Proposal Form when no active grant */}
+        {!checkingGrant && !hasActiveGrant && (
+          <div className="bg-white rounded-lg shadow p-6 mb-6">
+            <h3 className="text-xl font-bold text-gray-800 mb-4">Submit Project Proposal</h3>
+            <p className="text-sm text-gray-600 mb-5">
+              You currently do not have any active grants. Submit a proposal to appear on the sponsor project marketplace.
+            </p>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-2">Project Title</label>
+                <input
+                  type="text"
+                  value={proposalForm.title}
+                  onChange={(e) => setProposalForm({ ...proposalForm, title: e.target.value })}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600"
+                  placeholder="Enter project title"
+                />
+              </div>
+
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
+                <textarea
+                  value={proposalForm.description}
+                  onChange={(e) => setProposalForm({ ...proposalForm, description: e.target.value })}
+                  rows={3}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600"
+                  placeholder="Describe your project"
+                />
+              </div>
+
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-2">Expected Deliveribles</label>
+                <textarea
+                  value={proposalForm.expectedDeliverables}
+                  onChange={(e) => setProposalForm({ ...proposalForm, expectedDeliverables: e.target.value })}
+                  rows={3}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600"
+                  placeholder="List expected deliverables"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Expected Timeline</label>
+                <input
+                  type="text"
+                  value={proposalForm.expectedTimeline}
+                  onChange={(e) => setProposalForm({ ...proposalForm, expectedTimeline: e.target.value })}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600"
+                  placeholder="e.g. 8 weeks"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Expected Cost (ALGO)</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.1"
+                  value={proposalForm.expectedCost}
+                  onChange={(e) => setProposalForm({ ...proposalForm, expectedCost: e.target.value })}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600"
+                  placeholder="Enter expected cost"
+                />
+              </div>
+
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-2">GitHub Link</label>
+                <input
+                  type="url"
+                  value={proposalForm.githubLink}
+                  onChange={(e) => setProposalForm({ ...proposalForm, githubLink: e.target.value })}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600"
+                  placeholder="https://github.com/username/repo"
+                />
+              </div>
             </div>
+
             <button
-              onClick={fetchContractState}
-              disabled={!appId || loadingState}
-              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+              onClick={handleSubmitProposal}
+              disabled={submittingProposal}
+              className="mt-5 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 transition-colors"
             >
-              {loadingState ? 'Loading...' : 'Load Grant'}
+              {submittingProposal ? 'Submitting...' : 'Submit Proposal'}
             </button>
           </div>
+        )}
+
+        <div className="bg-white rounded-lg shadow p-6 mb-6">
+          <h3 className="text-xl font-bold text-gray-800 mb-2">Submitted Proposals</h3>
+          <p className="text-sm text-gray-600 mb-5">
+            View all your submitted proposals and edit them anytime.
+          </p>
+
+          {loadingProposals ? (
+            <p className="text-gray-500">Loading submitted proposals...</p>
+          ) : submittedProposals.length === 0 ? (
+            <div className="rounded-lg border border-dashed border-gray-300 bg-gray-50 p-4 text-sm text-gray-600">
+              You have not submitted any proposals yet.
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {submittedProposals.map((proposal) => (
+                <div key={proposal.id} className="rounded-xl border border-gray-200 p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+                    <h4 className="text-lg font-semibold text-gray-900">{proposal.title}</h4>
+                    <span className="text-xs font-medium px-2 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-100">
+                      {proposal.status}
+                    </span>
+                  </div>
+
+                  {editingProposalId === proposal.id ? (
+                    <div className="space-y-3">
+                      <input
+                        type="text"
+                        value={editProposalForm.title}
+                        onChange={(e) => setEditProposalForm({ ...editProposalForm, title: e.target.value })}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600"
+                        placeholder="Project title"
+                      />
+                      <textarea
+                        value={editProposalForm.description}
+                        onChange={(e) => setEditProposalForm({ ...editProposalForm, description: e.target.value })}
+                        rows={3}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600"
+                        placeholder="Project description"
+                      />
+                      <textarea
+                        value={editProposalForm.expectedDeliverables}
+                        onChange={(e) => setEditProposalForm({ ...editProposalForm, expectedDeliverables: e.target.value })}
+                        rows={3}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600"
+                        placeholder="Expected deliverables"
+                      />
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <input
+                          type="text"
+                          value={editProposalForm.expectedTimeline}
+                          onChange={(e) => setEditProposalForm({ ...editProposalForm, expectedTimeline: e.target.value })}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600"
+                          placeholder="Expected timeline"
+                        />
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.1"
+                          value={editProposalForm.expectedCost}
+                          onChange={(e) => setEditProposalForm({ ...editProposalForm, expectedCost: e.target.value })}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600"
+                          placeholder="Expected cost (ALGO)"
+                        />
+                      </div>
+                      <input
+                        type="url"
+                        value={editProposalForm.githubLink}
+                        onChange={(e) => setEditProposalForm({ ...editProposalForm, githubLink: e.target.value })}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600"
+                        placeholder="GitHub link"
+                      />
+
+                      <div className="flex gap-2">
+                        <button
+                          onClick={handleUpdateProposal}
+                          disabled={savingProposalEdit}
+                          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 transition-colors"
+                        >
+                          {savingProposalEdit ? 'Saving...' : 'Save Changes'}
+                        </button>
+                        <button
+                          onClick={() => setEditingProposalId(null)}
+                          disabled={savingProposalEdit}
+                          className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 disabled:opacity-60 transition-colors"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <p className="text-sm text-gray-700 mb-3">{proposal.description}</p>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm text-gray-600 mb-3">
+                        <p><span className="font-medium text-gray-800">Deliverables:</span> {proposal.expectedDeliverables || 'N/A'}</p>
+                        <p><span className="font-medium text-gray-800">Timeline:</span> {proposal.expectedTimeline || 'N/A'}</p>
+                        <p><span className="font-medium text-gray-800">Expected Cost:</span> {proposal.expectedCost ?? 0} ALGO</p>
+                        <p><span className="font-medium text-gray-800">Trust Score:</span> {proposal.trustScore ?? 0}</p>
+                      </div>
+                      <p className="text-xs text-gray-500 mb-3">
+                        Updated: {new Date(proposal.updatedAt).toLocaleString()}
+                      </p>
+                      <a
+                        href={proposal.githubLink}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex text-sm text-blue-600 hover:underline mb-3"
+                      >
+                        View GitHub Repository
+                      </a>
+                      <div>
+                        <button
+                          onClick={() => handleStartEditProposal(proposal)}
+                          className="px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-black transition-colors"
+                        >
+                          Edit Proposal
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
+
+        {/* Auto Grant Overview */}
+        {hasActiveGrant && (
+          <div className="bg-white rounded-lg shadow p-6 mb-6">
+            <h3 className="text-xl font-bold text-gray-800 mb-2">Grant Overview</h3>
+            <p className="text-sm text-gray-600 mb-4">
+              Your grant is loaded automatically when a sponsor creates it. Track progress and submit milestone proofs here.
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="rounded-lg border border-gray-200 p-4">
+                <p className="text-xs text-gray-500 mb-1">Application ID</p>
+                <p className="font-semibold text-gray-900">{studentGrant?.appId || appId}</p>
+              </div>
+              <div className="rounded-lg border border-gray-200 p-4">
+                <p className="text-xs text-gray-500 mb-1">Project</p>
+                <p className="font-semibold text-gray-900">{studentGrant?.projectTitle || 'Active Grant'}</p>
+              </div>
+              <div className="rounded-lg border border-gray-200 p-4">
+                <p className="text-xs text-gray-500 mb-1">Sponsor Wallet</p>
+                <p className="font-mono text-xs text-gray-800 break-all">{studentGrant?.sponsorWallet || '-'}</p>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Submit Milestone Modal */}
         {showSubmitModal && (
@@ -347,7 +884,8 @@ export default function StudentDashboard() {
                     type="number"
                     value={submissionForm.milestoneIndex}
                     onChange={(e) => setSubmissionForm({ ...submissionForm, milestoneIndex: e.target.value })}
-                    placeholder={contractState ? `Next: ${contractState.currentMilestone}` : '0'}
+                    min="1"
+                    placeholder={contractState ? `Next: ${Math.min(contractState.currentMilestone + 1, contractState.totalMilestones)}` : '1'}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600"
                   />
                 </div>
@@ -383,7 +921,11 @@ export default function StudentDashboard() {
                 <button
                   onClick={() => {
                     setShowSubmitModal(false);
-                    setSubmissionForm({ milestoneIndex: '', proofLink: '', description: '' });
+                    setSubmissionForm({
+                      milestoneIndex: '',
+                      proofLink: '',
+                      description: '',
+                    });
                   }}
                   disabled={submitting}
                   className="flex-1 px-4 py-2 bg-gray-300 text-gray-800 rounded-lg hover:bg-gray-400 disabled:opacity-50 transition-colors"
@@ -417,9 +959,11 @@ export default function StudentDashboard() {
               <div className="bg-white rounded-lg shadow p-6">
                 <h3 className="text-lg font-semibold text-gray-800 mb-2">Current Milestone</h3>
                 <p className="text-3xl font-bold text-green-600">
-                  {contractState.currentMilestone} / {contractState.totalMilestones}
+                  {Math.min(contractState.currentMilestone + 1, contractState.totalMilestones)} / {contractState.totalMilestones}
                 </p>
-                <p className="text-sm text-gray-600 mt-2">Progress</p>
+                <p className="text-sm text-gray-600 mt-2">
+                  Next required milestone: {Math.min(contractState.currentMilestone + 1, contractState.totalMilestones)}
+                </p>
               </div>
 
               <div className="bg-white rounded-lg shadow p-6">
@@ -500,7 +1044,7 @@ export default function StudentDashboard() {
                     >
                       <div className="flex justify-between items-start mb-2">
                         <div className="flex items-center gap-3">
-                          <span className="text-lg font-bold text-gray-800">Milestone {i}</span>
+                          <span className="text-lg font-bold text-gray-800">Milestone {i + 1}</span>
                           {status === 'approved' && <span className="text-green-600 font-semibold">✓ Approved</span>}
                           {status === 'pending' && <span className="text-yellow-600 font-semibold">⏳ Pending Review</span>}
                           {status === 'not-submitted' && <span className="text-gray-500">Not Submitted</span>}
@@ -517,14 +1061,27 @@ export default function StudentDashboard() {
                           </p>
                           <p className="text-sm text-gray-700">
                             <span className="font-medium">Proof:</span>{' '}
-                            <a
-                              href={submission.proofLink}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-blue-600 hover:underline"
-                            >
-                              {submission.proofLink}
-                            </a>
+                            {submission.proofLink ? (
+                              <a
+                                href={submission.proofLink}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-blue-600 hover:underline"
+                              >
+                                Open submitted link
+                              </a>
+                            ) : submission.proofFileUrl ? (
+                              <a
+                                href={submission.proofFileUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-blue-600 hover:underline"
+                              >
+                                Open uploaded file
+                              </a>
+                            ) : (
+                              <span className="text-gray-500">No proof attached</span>
+                            )}
                           </p>
                           <p className="text-xs text-gray-500">
                             Submitted: {new Date(submission.submittedAt).toLocaleString()}
@@ -554,21 +1111,21 @@ export default function StudentDashboard() {
         {!contractState && appId > 0 && !loadingState && (
           <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 text-center">
             <p className="text-yellow-800">
-              No grant found. Make sure you entered the correct Application ID.
+              Grant state is currently unavailable. Please refresh in a moment.
             </p>
           </div>
         )}
 
         {/* Initial State */}
-        {!contractState && appId === 0 && (
+        {!contractState && appId === 0 && hasActiveGrant && (
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-8 text-center">
             <div className="text-4xl mb-4">🎓</div>
-            <h3 className="text-xl font-bold text-gray-800 mb-2">Get Started</h3>
+            <h3 className="text-xl font-bold text-gray-800 mb-2">Grant Syncing</h3>
             <p className="text-gray-600 mb-4">
-              Enter your Grant Application ID above to view your grant details and submit milestone proofs.
+              Your sponsor has created a grant. Your dashboard is syncing grant details automatically.
             </p>
             <p className="text-sm text-gray-500">
-              Don't have a grant yet? Contact a sponsor to create one for you.
+              If this takes too long, refresh the page.
             </p>
           </div>
         )}

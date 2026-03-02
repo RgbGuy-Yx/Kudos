@@ -5,12 +5,17 @@ export interface MilestoneSubmission {
   appId: number;
   milestoneIndex: number;
   studentAddress: string;
-  proofLink: string;
+  proofLink?: string;
+  proofFileUrl?: string;
+  proofFileName?: string;
+  proofFileMimeType?: string;
+  proofType: 'github_link' | 'file_upload';
   description: string;
   submittedAt: Date;
   status: 'pending' | 'approved' | 'rejected';
   approvedAt?: Date;
   rejectedReason?: string;
+  reviewTxId?: string;
 }
 
 // Indexes for efficient queries

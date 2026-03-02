@@ -17,12 +17,27 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { appId, milestoneIndex, proofLink, description } = body;
+    const {
+      appId,
+      milestoneIndex,
+      proofLink,
+      proofFileUrl,
+      proofFileName,
+      proofFileMimeType,
+      description,
+    } = body;
 
     // Validation
-    if (!appId || milestoneIndex === undefined || !proofLink || !description) {
+    if (!appId || milestoneIndex === undefined || !description) {
       return NextResponse.json(
-        { error: 'Missing required fields: appId, milestoneIndex, proofLink, description' },
+        { error: 'Missing required fields: appId, milestoneIndex, description' },
+        { status: 400 }
+      );
+    }
+
+    if (!proofLink && !proofFileUrl) {
+      return NextResponse.json(
+        { error: 'Provide either a proofLink or an uploaded proof file URL' },
         { status: 400 }
       );
     }
@@ -35,11 +50,20 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid milestoneIndex' }, { status: 400 });
     }
 
-    // Validate URL format
-    try {
-      new URL(proofLink);
-    } catch {
-      return NextResponse.json({ error: 'Invalid proofLink URL' }, { status: 400 });
+    if (proofLink) {
+      try {
+        new URL(proofLink);
+      } catch {
+        return NextResponse.json({ error: 'Invalid proofLink URL' }, { status: 400 });
+      }
+    }
+
+    if (proofFileUrl && typeof proofFileUrl !== 'string') {
+      return NextResponse.json({ error: 'Invalid proofFileUrl' }, { status: 400 });
+    }
+
+    if (proofFileUrl && !proofFileUrl.startsWith('/uploads/milestones/')) {
+      return NextResponse.json({ error: 'Invalid uploaded proof file URL' }, { status: 400 });
     }
 
     const client = await clientPromise;
@@ -64,7 +88,11 @@ export async function POST(req: NextRequest) {
       appId,
       milestoneIndex,
       studentAddress: payload.walletAddress,
-      proofLink,
+      proofType: proofFileUrl ? 'file_upload' : 'github_link',
+      proofLink: proofLink || undefined,
+      proofFileUrl: proofFileUrl || undefined,
+      proofFileName: proofFileName || undefined,
+      proofFileMimeType: proofFileMimeType || undefined,
       description,
       submittedAt: new Date(),
       status: 'pending',

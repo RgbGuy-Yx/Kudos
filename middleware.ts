@@ -6,7 +6,7 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Protected routes
-  const protectedRoutes = ['/dashboard/sponsor', '/dashboard/student'];
+  const protectedRoutes = ['/sponsor/dashboard', '/sponsor/projects', '/dashboard/sponsor', '/dashboard/student'];
   const isProtectedRoute = protectedRoutes.some(route => pathname.startsWith(route));
 
   if (isProtectedRoute) {
@@ -28,14 +28,18 @@ export async function middleware(request: NextRequest) {
       }
 
       // Check role-based access
-      if (pathname.startsWith('/dashboard/sponsor') && payload.role !== 'sponsor') {
+      if ((pathname.startsWith('/sponsor/dashboard') || pathname.startsWith('/sponsor/projects') || pathname.startsWith('/dashboard/sponsor')) && payload.role !== 'sponsor') {
         // Not a sponsor, redirect to their dashboard
         return NextResponse.redirect(new URL('/dashboard/student', request.url));
       }
 
+      if (pathname.startsWith('/dashboard/sponsor') && payload.role === 'sponsor') {
+        return NextResponse.redirect(new URL('/sponsor/dashboard', request.url));
+      }
+
       if (pathname.startsWith('/dashboard/student') && payload.role !== 'student') {
         // Not a student, redirect to their dashboard
-        return NextResponse.redirect(new URL('/dashboard/sponsor', request.url));
+        return NextResponse.redirect(new URL('/sponsor/dashboard', request.url));
       }
 
       // Add user info to headers for easy access in pages

@@ -2,15 +2,14 @@
 
 @theme {
     --font-sans: 'Inter', sans-serif;
-    --font-domine: 'Domine', serif;
 }
 
-@layer base {
-    body {
-        @apply bg-white text-gray-800 text-sm antialiased;
-    }
+@custom-variant dark (&:where(.dark, .dark *));
 
-    button {
-        @apply cursor-pointer;
-    }
+body {
+    @apply bg-white text-slate-800 dark:bg-gray-950 dark:text-white text-sm antialiased;
+}
+
+button {
+    @apply cursor-pointer;
 }

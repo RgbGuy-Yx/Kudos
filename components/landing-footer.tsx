@@ -16,7 +16,7 @@ export default function LandingFooter() {
             <h2 className="font-semibold mb-5 text-gray-800">Platform</h2>
             <Link className="hover:text-slate-600 transition" href="/signup">Create account</Link>
             <Link className="hover:text-slate-600 transition" href="/login">Connect wallet</Link>
-            <Link className="hover:text-slate-600 transition" href="/dashboard/sponsor">Sponsor dashboard</Link>
+            <Link className="hover:text-slate-600 transition" href="/sponsor/dashboard">Sponsor dashboard</Link>
             <Link className="hover:text-slate-600 transition" href="/dashboard/student">Student dashboard</Link>
           </div>
         </div>

@@ -1,100 +1,71 @@
-'use client';
+"use client";
+import { navLinks } from "@/data/navLinks";
 import { MenuIcon, XIcon } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
-
-interface NavLink {
-    name: string;
-    href: string;
-}
+import { useEffect, useState } from "react";
+import ThemeToggle from "./ThemeToggle";
+import { useThemeContext } from "@/contexts/ThemeContext";
 
 export default function Navbar() {
-    const [isOpen, setIsOpen] = useState(false);
-    const [showNavbar, setShowNavbar] = useState(true);
-    const lastScrollY = useRef(0);
-
-    const navLinks: NavLink[] = [
-        { name: "Home", href: "/#home" },
-        { name: "Features", href: "/#features" },
-        { name: "Process", href: "/#process" },
-        { name: "How It Works", href: "/#how-it-works" },
-    ];
+    const [openMobileMenu, setOpenMobileMenu] = useState(false);
+    const { theme } = useThemeContext();
 
     useEffect(() => {
-        const handleScroll = () => {
-            const currentScroll = window.scrollY;
-
-            if (currentScroll > lastScrollY.current && currentScroll > 80) {
-                setShowNavbar(false);
-            } else {
-                setShowNavbar(true);
-            }
-
-            lastScrollY.current = currentScroll;
-        };
-
-        window.addEventListener("scroll", handleScroll, { passive: true });
-        return () => window.removeEventListener("scroll", handleScroll);
-    }, []);
+        if (openMobileMenu) {
+            document.body.classList.add("max-md:overflow-hidden");
+        } else {
+            document.body.classList.remove("max-md:overflow-hidden");
+        }
+    }, [openMobileMenu]);
 
     return (
-        <>
-            <nav className={`fixed top-0 left-0 w-full z-40 bg-white/60 backdrop-blur-md transition-transform duration-400 ${showNavbar ? "translate-y-0" : "-translate-y-full"}`}>
-                <div className="flex items-center justify-between px-4 py-4 md:px-16 lg:px-24 xl:px-32 border-b border-gray-200">
-                    <Link href="/" className="text-xl font-bold text-gray-900 md:mr-31">
-                        Kudos
-                    </Link>
+        <nav className={`flex items-center justify-between fixed z-50 top-0 w-full px-6 md:px-16 lg:px-24 xl:px-32 py-4 ${openMobileMenu ? "" : "backdrop-blur"}`}>
+            <Link href="/">
+                <Image
+                    className="h-9 md:h-9.5 w-auto shrink-0"
+                    src={theme === "dark" ? "/assets/logo-light.svg" : "/assets/logo-dark.svg"}
+                    alt="Kudos"
+                    width={140}
+                    height={40}
+                    priority
+                />
+            </Link>
 
-                    <div className="hidden md:flex items-center gap-8 text-gray-600">
-                        {navLinks.map((link) => (
-                            <Link key={link.name} href={link.href} className="hover:text-gray-800">
-                                {link.name}
-                            </Link>
-                        ))}
-                    </div>
-
-                    <div className="hidden md:flex items-center gap-2">
-                        <Link href="/login" className="px-6 py-2.5 hover:bg-gray-100 rounded-lg">
-                            Login
-                        </Link>
-                        <Link href="/signup" className="bg-linear-to-b from-gray-600 to-gray-800 hover:from-gray-700 hover:to-gray-900 transition px-5 py-2 text-white rounded-lg">
-                            Get Started
-                        </Link>
-                    </div>
-
-                    <button onClick={() => setIsOpen(true)} className="transition active:scale-90 md:hidden">
-                        <MenuIcon className="size-6.5" />
-                    </button>
-                </div>
-            </nav>
-
-            <div className={`flex flex-col items-center justify-center gap-6 text-lg font-medium fixed inset-0 bg-white/40 backdrop-blur-md z-50 transition-all duration-300 ${isOpen ? "translate-x-0" : "translate-x-full"}`}>
+            <div className="hidden items-center md:gap-8 lg:gap-9 md:flex lg:pl-20">
                 {navLinks.map((link) => (
-                    <Link key={link.name} href={link.href} onClick={() => setIsOpen(false)}>
+                    <Link key={link.name} href={link.href} className="hover:text-slate-600 dark:hover:text-slate-300">
                         {link.name}
                     </Link>
                 ))}
+            </div>
 
-                <Link href="/login" onClick={() => setIsOpen(false)} className="px-6 py-2.5">
-                    Login
+            <div className={`fixed inset-0 flex flex-col items-center justify-center gap-6 text-lg font-medium bg-white/60 dark:bg-black/40 backdrop-blur-md md:hidden transition duration-300 ${openMobileMenu ? "translate-x-0" : "-translate-x-full"}`}>
+                {navLinks.map((link) => (
+                    <Link key={link.name} href={link.href} onClick={() => setOpenMobileMenu(false)}>
+                        {link.name}
+                    </Link>
+                ))}
+                <Link href="/login" onClick={() => setOpenMobileMenu(false)}>
+                    Sign in
                 </Link>
-
-                <Link
-                    href="/signup"
-                    onClick={() => setIsOpen(false)}
-                    className="bg-linear-to-b from-gray-600 to-gray-800 px-5 py-2 text-white rounded-lg"
-                >
-                    Get Started
-                </Link>
-
-                <button
-                    onClick={() => setIsOpen(false)}
-                    className="rounded-md bg-linear-to-b from-gray-600 to-gray-800 p-2 text-white ring-white active:ring-2"
-                >
+                <button className="aspect-square size-10 p-1 items-center justify-center bg-purple-600 hover:bg-purple-700 transition text-white rounded-md flex" onClick={() => setOpenMobileMenu(false)}>
                     <XIcon />
                 </button>
             </div>
-            <div className="h-18" />
-        </>
+
+            <div className="flex items-center gap-4">
+                <ThemeToggle />
+                <Link href="/login" className="hidden md:block hover:bg-slate-100 dark:hover:bg-purple-950 transition px-4 py-2 border border-purple-600 rounded-md">
+                    Sign in
+                </Link>
+                <Link href="/signup" className="hidden md:block px-4 py-2 bg-purple-600 hover:bg-purple-700 transition text-white rounded-md">
+                    Get started
+                </Link>
+                <button onClick={() => setOpenMobileMenu(!openMobileMenu)} className="md:hidden">
+                    <MenuIcon size={26} className="active:scale-90 transition" />
+                </button>
+            </div>
+        </nav>
     );
 }
