@@ -1,0 +1,71 @@
+import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
+import { verifyJWT } from './lib/auth';
+
+export async function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+
+  // Protected routes
+  const protectedRoutes = ['/dashboard/sponsor', '/dashboard/student'];
+  const isProtectedRoute = protectedRoutes.some(route => pathname.startsWith(route));
+
+  if (isProtectedRoute) {
+    const token = request.cookies.get('auth-token')?.value;
+
+    if (!token) {
+      // No token, redirect to login
+      return NextResponse.redirect(new URL('/login', request.url));
+    }
+
+    try {
+      const payload = await verifyJWT(token);
+
+      if (!payload) {
+        // Invalid token, redirect to login
+        const response = NextResponse.redirect(new URL('/login', request.url));
+        response.cookies.delete('auth-token');
+        return response;
+      }
+
+      // Check role-based access
+      if (pathname.startsWith('/dashboard/sponsor') && payload.role !== 'sponsor') {
+        // Not a sponsor, redirect to their dashboard
+        return NextResponse.redirect(new URL('/dashboard/student', request.url));
+      }
+
+      if (pathname.startsWith('/dashboard/student') && payload.role !== 'student') {
+        // Not a student, redirect to their dashboard
+        return NextResponse.redirect(new URL('/dashboard/sponsor', request.url));
+      }
+
+      // Add user info to headers for easy access in pages
+      const response = NextResponse.next();
+      response.headers.set('x-user-id', payload.userId);
+      response.headers.set('x-user-wallet', payload.walletAddress);
+      response.headers.set('x-user-role', payload.role);
+
+      return response;
+    } catch (error) {
+      console.error('Middleware error:', error);
+      const response = NextResponse.redirect(new URL('/login', request.url));
+      response.cookies.delete('auth-token');
+      return response;
+    }
+  }
+
+  return NextResponse.next();
+}
+
+export const config = {
+  matcher: [
+    /*
+     * Match all request paths except for the ones starting with:
+     * - api (API routes)
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     * - public (public files)
+     */
+    '/((?!api|_next/static|_next/image|favicon.ico|public).*)',
+  ],
+};
