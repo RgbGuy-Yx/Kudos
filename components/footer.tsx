@@ -23,7 +23,7 @@ export default function Footer() {
                     <Link href="/">
                         <Image
                             className="h-9 md:h-9.5 w-auto shrink-0"
-                            src={theme === "dark" ? "/assets/logo-light.svg" : "/assets/logo-dark.svg"}
+                            src="/assets/logo.svg"
                             alt="Kudos"
                             width={140}
                             height={40}

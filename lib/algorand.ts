@@ -1,4 +1,5 @@
 import algosdk from 'algosdk';
+import contractSpec from '@/contracts/artifacts/KudosEscrowContract.arc56.json';
 
 // Initialize Algod client
 export function getAlgodClient() {
@@ -170,6 +171,32 @@ export function encodeUint64(num: number): Uint8Array {
   return algosdk.encodeUint64(num);
 }
 
+function decodeBase64Program(base64: string): Uint8Array {
+  if (typeof Buffer !== 'undefined') {
+    return new Uint8Array(Buffer.from(base64, 'base64'));
+  }
+
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index += 1) {
+    bytes[index] = binary.charCodeAt(index);
+  }
+  return bytes;
+}
+
+function decodeHex(hex: string): Uint8Array {
+  if (typeof Buffer !== 'undefined') {
+    return new Uint8Array(Buffer.from(hex, 'hex'));
+  }
+
+  const clean = hex.replace(/^0x/, '');
+  const bytes = new Uint8Array(clean.length / 2);
+  for (let index = 0; index < clean.length; index += 2) {
+    bytes[index / 2] = parseInt(clean.slice(index, index + 2), 16);
+  }
+  return bytes;
+}
+
 export async function createApplication(
   sponsorAddress: string,
   studentWallet: string,
@@ -177,31 +204,65 @@ export async function createApplication(
   totalMilestones: number,
   signTransaction: (txns: algosdk.Transaction[]) => Promise<Uint8Array[]>
 ): Promise<{ txId: string; appId: number }> {
-  const configuredAppId = Number(process.env.NEXT_PUBLIC_TRUSTFUNDX_APP_ID || 0);
+  const approvalProgramB64 =
+    process.env.NEXT_PUBLIC_APPROVAL_PROGRAM_B64 ||
+    (contractSpec as any)?.byteCode?.approval ||
+    '';
+  const clearProgramB64 =
+    process.env.NEXT_PUBLIC_CLEAR_PROGRAM_B64 ||
+    (contractSpec as any)?.byteCode?.clear ||
+    '';
 
-  if (!configuredAppId) {
-    return {
-      txId: `DEMO-CREATE-${Date.now()}`,
-      appId: 900000000 + (Date.now() % 1000000),
-    };
+  if (!approvalProgramB64 || !clearProgramB64) {
+    throw new Error('Contract bytecode not configured for app creation');
   }
 
-  const appCallTxn = await createAppCallTxn(sponsorAddress, configuredAppId, [
-    encodeString('create_application'),
-    new Uint8Array(algosdk.decodeAddress(studentWallet).publicKey),
-    encodeUint64(proposedBudgetMicroalgos),
-    encodeUint64(totalMilestones),
-  ]);
+  const approvalProgram = decodeBase64Program(approvalProgramB64);
+  const clearProgram = decodeBase64Program(clearProgramB64);
 
-  const signedTxns = await signTransaction([appCallTxn]);
+  // ARC-4 selector for: create_application(address,uint64,uint64)void
+  const createApplicationSelector = decodeHex('669e5100');
+
   const algodClient = getAlgodClient();
-  const result = await algodClient.sendRawTransaction(signedTxns).do();
+  const suggestedParams = await algodClient.getTransactionParams().do();
 
-  await waitForConfirmation(result.txid);
+  const createTxn = algosdk.makeApplicationCreateTxnFromObject({
+    sender: sponsorAddress,
+    suggestedParams,
+    onComplete: algosdk.OnApplicationComplete.NoOpOC,
+    approvalProgram,
+    clearProgram,
+    numLocalInts: 0,
+    numLocalByteSlices: 0,
+    numGlobalInts: 5,
+    numGlobalByteSlices: 2,
+    appArgs: [
+      createApplicationSelector,
+      new Uint8Array(algosdk.decodeAddress(studentWallet).publicKey),
+      encodeUint64(proposedBudgetMicroalgos),
+      encodeUint64(totalMilestones),
+    ],
+  });
+
+  const signedTxns = await signTransaction([createTxn]);
+  
+  // Pera returns flat array of Uint8Array, send as single blob if only one txn
+  const txnBlob = signedTxns.length === 1 ? signedTxns[0] : signedTxns;
+  const result = await algodClient.sendRawTransaction(txnBlob).do();
+
+  const txId = result.txid;
+  await waitForConfirmation(txId);
+
+  const pendingTxn = await algodClient.pendingTransactionInformation(txId).do();
+  const appId = Number(pendingTxn.applicationIndex);
+
+  if (!appId || Number.isNaN(appId)) {
+    throw new Error('Application creation failed');
+  }
 
   return {
     txId: result.txid,
-    appId: configuredAppId,
+    appId,
   };
 }
 
@@ -218,43 +279,50 @@ export async function fundContract(
   const algodClient = getAlgodClient();
   const appAddress = algosdk.getApplicationAddress(appId).toString();
 
+  // ARC-4 selector for: fund_contract()void
+  const fundContractSelector = decodeHex('d072f6e1');
+
   const paymentTxn = await createPaymentTxn(
     sponsorAddress,
     appAddress,
     amountMicroalgos,
     'Fund escrow'
   );
-  const appCallTxn = await createAppCallTxn(sponsorAddress, appId, [encodeString('fund_contract')]);
+  const appCallTxn = await createAppCallTxn(sponsorAddress, appId, [fundContractSelector]);
 
   const grouped = [paymentTxn, appCallTxn];
   algosdk.assignGroupID(grouped);
 
   const signedTxns = await signTransaction(grouped);
   const result = await algodClient.sendRawTransaction(signedTxns).do();
-  await waitForConfirmation(result.txid);
+  const txId = result.txid;
+  await waitForConfirmation(txId);
 
-  return result.txid;
+  return txId;
 }
 
 export async function approveMilestone(
   sponsorAddress: string,
   appId: number,
-  milestoneIndex: number,
   signTransaction: (txns: algosdk.Transaction[]) => Promise<Uint8Array[]>
 ): Promise<string> {
   if (appId >= 900000000) {
-    return `DEMO-APPROVE-${milestoneIndex}-${Date.now()}`;
+    return `DEMO-APPROVE-${Date.now()}`;
   }
 
-  const txn = await createAppCallTxn(sponsorAddress, appId, [
-    encodeString('approve_milestone'),
-    encodeUint64(milestoneIndex),
-  ]);
+  // ARC-4 selector for: approve_milestone()void
+  const approveMilestoneSelector = decodeHex('a9a0077f');
+
+  const txn = await createAppCallTxn(sponsorAddress, appId, [approveMilestoneSelector]);
 
   const signedTxn = await signTransaction([txn]);
   const algodClient = getAlgodClient();
-  const result = await algodClient.sendRawTransaction(signedTxn).do();
-  await waitForConfirmation(result.txid);
+  const txnBlob = signedTxn.length === 1 ? signedTxn[0] : signedTxn;
+  const result = await algodClient.sendRawTransaction(txnBlob).do();
+  const txId = result.txid;
+  await waitForConfirmation(txId);
+
+  return txId;
 
   return result.txid;
 }

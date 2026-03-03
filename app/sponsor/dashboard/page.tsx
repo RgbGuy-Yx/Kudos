@@ -333,7 +333,8 @@ export default function SponsorDashboardPage() {
 
     setActionLoading(`approve-${milestone.id}`);
     try {
-      const txId = await approveMilestone(accountAddress, activeGrant.appId, milestone.milestoneIndex, signTransaction);
+      // Contract tracks milestone index internally, no need to pass it
+      const txId = await approveMilestone(accountAddress, activeGrant.appId, signTransaction);
 
       const reviewResponse = await fetch('/api/milestones/review', {
         method: 'POST',

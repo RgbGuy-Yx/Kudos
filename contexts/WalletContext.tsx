@@ -39,7 +39,9 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   }, [router]);
 
   useEffect(() => {
-    const wallet = new PeraWalletConnect();
+    const wallet = new PeraWalletConnect({
+      shouldShowSignTxnToast: true,
+    });
     setPeraWallet(wallet);
 
     // Try to reconnect to existing session
@@ -47,15 +49,15 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       if (accounts.length) {
         setAccountAddress(accounts[0]);
       }
-    }).catch(console.error);
-
-    // Listen for wallet disconnect events
-    wallet.connector?.on('disconnect', handleWalletDisconnect);
+    }).catch((err) => {
+      // Session doesn't exist or expired - this is normal
+      console.log('No existing session');
+    });
 
     return () => {
-      wallet.connector?.off('disconnect', handleWalletDisconnect);
+      // Cleanup on unmount
     };
-  }, [handleWalletDisconnect]);
+  }, []);
 
   const connectWallet = async () => {
     if (!peraWallet) throw new Error('Pera Wallet not initialized');
@@ -107,13 +109,18 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       throw new Error('Wallet not connected');
     }
 
-    // Convert transactions to encoded format for signing
-    const txnGroups = txns.map(txn => ({
-      txn: algosdk.encodeUnsignedTransaction(txn),
-      signers: [accountAddress],
-    }));
+    // Pera Wallet expects array of SignerTransaction arrays
+    const signerTxns = txns.map(txn => ({ txn }));
 
-    const signedTxns = await peraWallet.signTransaction([txnGroups]);
+    // Add timeout to prevent infinite hang
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      setTimeout(() => reject(new Error('Transaction signing timed out. Please check your Pera Wallet app and try again.')), 60000);
+    });
+
+    const signedTxns = await Promise.race([
+      peraWallet.signTransaction([signerTxns]),
+      timeoutPromise
+    ]);
     return signedTxns;
   }, [peraWallet, accountAddress]);
 

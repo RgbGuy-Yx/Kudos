@@ -2,7 +2,7 @@
 
 import { useAuth } from '@/hooks/useAuth';
 import { useWallet } from '@/contexts/WalletContext';
-import { algoToMicroalgos, createApplication } from '@/lib/algorand';
+import { algoToMicroalgos, createApplication, fundContract } from '@/lib/algorand';
 import { useParams, useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 
@@ -124,11 +124,24 @@ export default function ProjectDetailsPage() {
     setCreating(true);
 
     try {
+      if (!accountAddress) {
+        throw new Error('Please connect your wallet first');
+      }
+
+      // Step 1: Create the escrow contract application
       const { txId, appId } = await createApplication(
         accountAddress,
         studentWallet,
         algoToMicroalgos(totalAmount),
         milestonesRequired,
+        signTransaction
+      );
+
+      // Step 2: Fund the escrow with the full grant amount
+      const fundTxId = await fundContract(
+        accountAddress,
+        appId,
+        algoToMicroalgos(totalAmount),
         signTransaction
       );
 
@@ -142,6 +155,7 @@ export default function ProjectDetailsPage() {
           totalMilestones: milestonesRequired,
           appId,
           txId,
+          fundTxId,
         }),
       });
 
