@@ -2,9 +2,9 @@
 
 # Kudos
 
-**Blockchain-Powered Grant Funding Platform**
+**Transparent grants with milestone-based escrow payouts.**
 
-Connect sponsors with students for milestone-based grant funding on Algorand.
+Sponsors fund confidently. Students build faster. Every payout is verifiable on Algorand.
 
 [![Next.js](https://img.shields.io/badge/Next.js-16-black?logo=next.js)](https://nextjs.org/)
 [![React](https://img.shields.io/badge/React-19-61DAFB?logo=react)](https://react.dev/)
@@ -17,19 +17,19 @@ Connect sponsors with students for milestone-based grant funding on Algorand.
 
 ---
 
-## Overview
+## What is Kudos?
 
-Kudos is a full-stack web application where **sponsors** fund **student** projects through transparent, milestone-based grants secured by Algorand smart contract escrow.
+A grant platform where sponsors fund student projects through **proof-driven milestones** and **on-chain escrow**. No trust issues — just code, proof, and payouts.
 
-### Key Features
+### Features
 
-- **Role-based dashboards** — separate experiences for sponsors and students
-- **Proposal marketplace** — students publish projects; sponsors discover and fund them
-- **Milestone lifecycle** — submit proof, review, approve/reject with on-chain payouts
-- **Escrow smart contract** — grant funds locked on Algorand, released per milestone
-- **Wallet-first auth** — Pera Wallet connection as the identity layer
-- **Real-time notifications** — milestone updates, grant events, review outcomes
-- **AI assistant** — built-in chatbot for platform guidance
+- 🎯 **Role-based dashboards** — tailored views for sponsors & students
+- 🛒 **Proposal marketplace** — publish, discover, and fund projects
+- ✅ **Milestone payouts** — submit proof → review → ALGO released from escrow
+- 🔒 **Smart contract escrow** — funds locked on Algorand until milestones clear
+- 👛 **Wallet-first auth** — Pera Wallet = your identity
+- 🔔 **Live notifications** — instant updates on reviews & payouts
+- 🤖 **AI assistant** — in-app chatbot for platform help
 
 ---
 
