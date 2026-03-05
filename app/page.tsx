@@ -1,6 +1,7 @@
 "use client";
 
 import SectionTitle from "@/components/SectionTitle";
+import ChatbotWidget from "@/components/ChatbotWidget";
 import Footer from "@/components/footer";
 import Navbar from "@/components/navbar";
 import { useThemeContext } from "@/contexts/ThemeContext";
@@ -126,6 +127,7 @@ export default function Home() {
           </div>
         </div>
       </main>
+      <ChatbotWidget />
       <Footer />
     </>
   );

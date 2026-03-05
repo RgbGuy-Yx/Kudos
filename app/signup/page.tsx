@@ -78,71 +78,71 @@ export default function SignupPage() {
   return (
     <>
       <Navbar />
-      <main className="relative px-4 py-24 md:px-16 lg:px-24 xl:px-32 min-h-[calc(100vh-72px)] flex items-center justify-center bg-[url('/assets/dark-hero-gradient.svg')] bg-no-repeat bg-cover">
-        <div className="absolute inset-0 bg-[#050315]/80" />
-        <div className="relative w-full max-w-5xl grid md:grid-cols-2 border border-slate-700/60 rounded-2xl overflow-hidden bg-slate-900/70 backdrop-blur-sm shadow-2xl shadow-black/30">
-          <div className="p-8 md:p-10 bg-slate-900/80 border-b md:border-b-0 md:border-r border-slate-700/70">
-            <p className="text-sm text-slate-400">Create Account</p>
-            <h1 className="text-4xl font-semibold text-white mt-2">Join Kudos</h1>
-            <p className="mt-4 text-sm/6 text-slate-300">
-              Set your profile and role first, then connect your Pera Wallet to activate your sponsor or student dashboard.
+      <main className="relative px-4 py-24 md:px-16 lg:px-24 xl:px-32 min-h-[calc(100vh-72px)] flex items-center justify-center bg-[url('/assets/color-splash-light.svg')] dark:bg-[url('/assets/color-splash.svg')] bg-no-repeat bg-cover bg-center">
+        <div className="absolute inset-0 bg-purple-50/65 dark:bg-[#140824]/72" />
+        <div className="relative w-full max-w-5xl grid md:grid-cols-2 border border-slate-300 dark:border-slate-700/60 rounded-2xl overflow-hidden bg-white/85 dark:bg-slate-900/70 backdrop-blur-sm shadow-2xl shadow-slate-300/40 dark:shadow-black/30">
+          <div className="p-8 md:p-10 bg-white/80 dark:bg-slate-900/80 border-b md:border-b-0 md:border-r border-slate-300 dark:border-slate-700/70">
+            <p className="text-sm text-slate-600 dark:text-slate-400">Create Account</p>
+            <h1 className="text-4xl font-semibold text-slate-900 dark:text-white mt-2">Join Kudos</h1>
+            <p className="mt-4 text-sm/6 text-slate-700 dark:text-slate-300">
+                Set your profile and role first, then connect your Pera Wallet to activate your sponsor or student dashboard.
             </p>
 
-            <div className="mt-8 space-y-3 text-sm text-slate-300">
+            <div className="mt-8 space-y-3 text-sm text-slate-700 dark:text-slate-300">
               <p>Step 1: Profile details + role selection</p>
               <p>Step 2: Wallet connection and registration</p>
             </div>
           </div>
 
           <div className="p-8 md:p-10">
-            <h2 className="text-2xl font-semibold text-white mb-2">{step === 1 ? 'Profile Setup' : 'Wallet Connection'}</h2>
-            <p className="text-slate-300 mb-6 text-sm">
+            <h2 className="text-2xl font-semibold text-slate-900 dark:text-white mb-2">{step === 1 ? 'Profile Setup' : 'Wallet Connection'}</h2>
+            <p className="text-slate-700 dark:text-slate-300 mb-6 text-sm">
               {step === 1 ? 'Fill in your details to continue.' : 'Connect your wallet to complete account creation.'}
             </p>
 
             {step === 1 ? (
               <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-slate-200 mb-2">
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-2">
                 Full Name *
               </label>
               <input
                 type="text"
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                className="w-full px-4 py-2 border border-slate-700 bg-slate-950/60 text-slate-100 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none"
+                     className="w-full px-4 py-2 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950/60 text-slate-900 dark:text-slate-100 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none"
                 placeholder="Enter your full name"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-200 mb-2">
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-2">
                 Email Address *
               </label>
               <input
                 type="email"
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                className="w-full px-4 py-2 border border-slate-700 bg-slate-950/60 text-slate-100 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none"
+                     className="w-full px-4 py-2 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950/60 text-slate-900 dark:text-slate-100 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none"
                 placeholder="your.email@example.com"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-200 mb-2">
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-2">
                 Organization *
               </label>
               <input
                 type="text"
                 value={formData.organization}
                 onChange={(e) => setFormData({ ...formData, organization: e.target.value })}
-                className="w-full px-4 py-2 border border-slate-700 bg-slate-950/60 text-slate-100 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none"
+                     className="w-full px-4 py-2 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950/60 text-slate-900 dark:text-slate-100 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none"
                 placeholder="Your school or company"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-200 mb-2">
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-2">
                 Select Your Role *
               </label>
               <div className="grid grid-cols-2 gap-3">
@@ -151,26 +151,26 @@ export default function SignupPage() {
                   onClick={() => setFormData({ ...formData, role: 'student' })}
                   className={`p-4 border-2 rounded-lg transition-all ${
                     formData.role === 'student'
-                      ? 'border-purple-500 bg-purple-500/20 text-purple-200'
-                      : 'border-slate-700 text-slate-200 hover:border-slate-500 bg-slate-950/40'
+                      ? 'border-purple-500 bg-purple-500/20 text-purple-700 dark:text-purple-200'
+                           : 'border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:border-slate-400 dark:hover:border-slate-500 bg-slate-50 dark:bg-slate-950/40'
                   }`}
                 >
                   <div className="text-2xl mb-1">🎓</div>
                   <div className="font-semibold">Student</div>
-                  <div className="text-xs text-slate-300 mt-1">Receive funding</div>
+                  <div className="text-xs text-slate-500 dark:text-slate-300 mt-1">Receive funding</div>
                 </button>
                 <button
                   type="button"
                   onClick={() => setFormData({ ...formData, role: 'sponsor' })}
                   className={`p-4 border-2 rounded-lg transition-all ${
                     formData.role === 'sponsor'
-                      ? 'border-purple-500 bg-purple-500/20 text-purple-200'
-                      : 'border-slate-700 text-slate-200 hover:border-slate-500 bg-slate-950/40'
+                      ? 'border-purple-500 bg-purple-500/20 text-purple-700 dark:text-purple-200'
+                           : 'border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:border-slate-400 dark:hover:border-slate-500 bg-slate-50 dark:bg-slate-950/40'
                   }`}
                 >
                   <div className="text-2xl mb-1">💼</div>
                   <div className="font-semibold">Sponsor</div>
-                  <div className="text-xs text-slate-300 mt-1">Fund projects</div>
+                  <div className="text-xs text-slate-500 dark:text-slate-300 mt-1">Fund projects</div>
                 </button>
               </div>
             </div>
@@ -188,20 +188,20 @@ export default function SignupPage() {
               Next: Connect Wallet
             </button>
 
-            <p className="text-center text-sm text-slate-300">
+            <p className="text-center text-sm text-slate-700 dark:text-slate-300">
               Already have an account?{' '}
-              <Link href="/login" className="text-purple-300 hover:text-purple-200 hover:underline font-semibold">
+              <Link href="/login" className="text-purple-600 dark:text-purple-300 hover:text-purple-700 dark:hover:text-purple-200 hover:underline font-semibold">
                 Login here
               </Link>
             </p>
           </div>
         ) : (
           <div className="space-y-6">
-            <div className="bg-slate-950/50 p-4 rounded-lg border border-slate-700/70">
-              <p className="text-sm text-slate-200 mb-2">
+            <div className="bg-slate-50 dark:bg-slate-950/50 p-4 rounded-lg border border-slate-300 dark:border-slate-700/70">
+              <p className="text-sm text-slate-700 dark:text-slate-200 mb-2">
                 <strong>Step 2:</strong> Connect your Pera Wallet
               </p>
-              <div className="text-xs text-slate-300 space-y-1">
+              <div className="text-xs text-slate-600 dark:text-slate-300 space-y-1">
                 <p>✓ Name: {formData.name}</p>
                 <p>✓ Email: {formData.email}</p>
                 <p>✓ Organization: {formData.organization}</p>
@@ -210,7 +210,7 @@ export default function SignupPage() {
             </div>
 
             <div className="text-center">
-              <p className="text-slate-300 mb-4">
+              <p className="text-slate-700 dark:text-slate-300 mb-4">
                 Connect your Pera Wallet to complete registration
               </p>
               
@@ -237,7 +237,7 @@ export default function SignupPage() {
 
             <button
               onClick={() => setStep(1)}
-              className="w-full bg-slate-800 text-slate-200 py-3 rounded-lg font-semibold hover:bg-slate-700 transition-colors border border-slate-700"
+              className="w-full bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-slate-200 py-3 rounded-lg font-semibold hover:bg-slate-300 dark:hover:bg-slate-700 transition-colors border border-slate-300 dark:border-slate-700"
             >
               Back
             </button>

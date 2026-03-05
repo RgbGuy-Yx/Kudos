@@ -7,7 +7,9 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   algoToMicroalgos,
   approveMilestone,
+  emergencyClawback,
   ContractState,
+  getAccountBalance,
   getContractGlobalState,
 } from '@/lib/algorand';
 import SponsorLayout, { SponsorSection } from '@/components/sponsor/SponsorLayout';
@@ -132,7 +134,7 @@ export default function SponsorDashboardPage() {
     }
   }, [clearFlashLater]);
 
-  const fetchMilestones = useCallback(async (appId: number) => {
+  const fetchMilestones = useCallback(async (appId: number, totalMilestones: number) => {
     try {
       const response = await fetch(`/api/milestones?appId=${appId}`);
       const data = await response.json();
@@ -142,7 +144,10 @@ export default function SponsorDashboardPage() {
       }
 
       const submissions: MilestoneApiItem[] = data.milestones || [];
-      const normalized: MilestoneRecord[] = [0, 1, 2].map((index) => {
+      const normalized: MilestoneRecord[] = Array.from(
+        { length: Math.max(totalMilestones, 1) },
+        (_, index) => index,
+      ).map((index) => {
         const submission = submissions.find((item) => item.milestoneIndex === index);
 
         if (!submission) {
@@ -207,7 +212,7 @@ export default function SponsorDashboardPage() {
           escrowBalance: algoToMicroalgos(grant.escrowBalance),
           currentMilestone: grant.milestoneIndex,
           totalAmount: algoToMicroalgos(grant.proposedBudget),
-          totalMilestones: 3,
+          totalMilestones: grant.totalMilestones,
           sponsorAddress: grant.sponsorWallet,
           studentAddress: grant.studentWallet,
           isActive: grant.status === 'ACTIVE',
@@ -219,7 +224,7 @@ export default function SponsorDashboardPage() {
       const state = await getContractGlobalState(grant.appId);
       setContractState(state);
 
-      if (state && state.currentMilestone >= 3 && grant.status === 'ACTIVE') {
+      if (state && state.currentMilestone >= grant.totalMilestones && grant.status === 'ACTIVE') {
         await markGrantCompleted(grant.id);
       }
     } catch (err: any) {
@@ -245,7 +250,7 @@ export default function SponsorDashboardPage() {
     setActiveGrant(grant);
 
     if (grant) {
-      await Promise.all([refreshContractState(grant), fetchMilestones(grant.appId)]);
+      await Promise.all([refreshContractState(grant), fetchMilestones(grant.appId, grant.totalMilestones)]);
       setActiveSection('overview');
     } else {
       setContractState(null);
@@ -294,30 +299,81 @@ export default function SponsorDashboardPage() {
       return;
     }
 
-    const confirmed = window.confirm('Are you sure you want to delete the current active grant?');
+    if (!accountAddress) {
+      setError('Wallet connection required to cancel grant and clawback escrow funds');
+      clearFlashLater();
+      return;
+    }
+
+    if (accountAddress !== activeGrant.sponsorWallet) {
+      setError('Connected wallet does not match this grant sponsor wallet. Please connect the sponsor wallet used to create the grant.');
+      clearFlashLater();
+      return;
+    }
+
+    try {
+      const balance = await getAccountBalance(accountAddress);
+      const minimumForTxn = 120000; // 0.12 ALGO buffer for min-balance + fees
+      if (balance < minimumForTxn) {
+        setError('Insufficient wallet balance to submit cancel transaction. Keep at least 0.12 ALGO in the sponsor wallet for network minimum balance and fees.');
+        clearFlashLater();
+        return;
+      }
+    } catch {
+      setError('Unable to verify wallet balance. Please try again.');
+      clearFlashLater();
+      return;
+    }
+
+    const confirmed = window.confirm(
+      'Are you sure you want to cancel this grant? Remaining escrow funds will be returned to your wallet.'
+    );
     if (!confirmed) return;
 
     setDeletingGrant(true);
     try {
-      const response = await fetch('/api/grants/delete', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ grantId: activeGrant.id }),
-      });
+      // Step 1: Call on-chain emergency_clawback to return remaining escrow to sponsor
+      const clawbackTxId = await emergencyClawback(accountAddress, activeGrant.appId, signTransaction);
 
-      const data = await response.json();
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to delete active grant');
+      // Step 2: Update MongoDB - mark grant as CANCELLED and record clawback tx
+      // Retry API call up to 3 times in case of transient failure (on-chain already succeeded)
+      let apiSuccess = false;
+      let lastApiError = '';
+      for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+          const response = await fetch('/api/grants/delete', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ grantId: activeGrant.id, clawbackTxId }),
+          });
+
+          const data = await response.json();
+          if (!response.ok) {
+            lastApiError = data.error || 'Failed to cancel grant';
+            continue;
+          }
+          apiSuccess = true;
+          break;
+        } catch (e: any) {
+          lastApiError = e.message || 'Network error';
+        }
       }
 
-      setSuccess('Active grant deleted successfully');
-      setLastTxId('');
+      if (!apiSuccess) {
+        throw new Error(
+          `On-chain clawback succeeded (tx: ${clawbackTxId}) but database update failed: ${lastApiError}. ` +
+          `Your funds have been returned. Please refresh the page.`
+        );
+      }
+
+      setSuccess('Grant cancelled — escrow funds returned to your wallet');
+      setLastTxId(clawbackTxId);
       clearFlashLater();
 
       await refreshDashboard();
       setActiveSection('projects');
     } catch (err: any) {
-      setError(err.message || 'Failed to delete active grant');
+      setError(err.message || 'Failed to cancel grant and clawback funds');
       clearFlashLater();
     } finally {
       setDeletingGrant(false);
@@ -331,24 +387,68 @@ export default function SponsorDashboardPage() {
       return;
     }
 
+    if (accountAddress !== activeGrant.sponsorWallet) {
+      setError('Connected wallet does not match this grant sponsor wallet. Please connect the sponsor wallet used to create the grant.');
+      clearFlashLater();
+      return;
+    }
+
+    try {
+      const balance = await getAccountBalance(accountAddress);
+      const minimumForTxn = 120000; // 0.12 ALGO buffer for min-balance + fees
+      if (balance < minimumForTxn) {
+        setError('Insufficient wallet balance to submit approval transaction. Keep at least 0.12 ALGO in the sponsor wallet for network minimum balance and fees.');
+        clearFlashLater();
+        return;
+      }
+    } catch {
+      setError('Unable to verify wallet balance. Please try again.');
+      clearFlashLater();
+      return;
+    }
+
     setActionLoading(`approve-${milestone.id}`);
     try {
       // Contract tracks milestone index internally, no need to pass it
       const txId = await approveMilestone(accountAddress, activeGrant.appId, signTransaction);
 
-      const reviewResponse = await fetch('/api/milestones/review', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          submissionId: milestone.id,
-          action: 'APPROVE',
-          txId,
-        }),
-      });
+      // Retry API call up to 3 times (on-chain payout already happened)
+      let apiSuccess = false;
+      let lastApiError = '';
+      for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+          const reviewResponse = await fetch('/api/milestones/review', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              submissionId: milestone.id,
+              action: 'APPROVE',
+              txId,
+            }),
+          });
 
-      if (!reviewResponse.ok) {
-        const data = await reviewResponse.json();
-        throw new Error(data.error || 'Failed to update submission status');
+          if (!reviewResponse.ok) {
+            const data = await reviewResponse.json();
+            lastApiError = data.error || 'Failed to update submission status';
+            // Don't retry on 409 (already approved) — treat as success
+            if (reviewResponse.status === 409) {
+              apiSuccess = true;
+              break;
+            }
+            continue;
+          }
+          apiSuccess = true;
+          break;
+        } catch (e: any) {
+          lastApiError = e.message || 'Network error';
+        }
+      }
+
+      if (!apiSuccess) {
+        throw new Error(
+          `On-chain approval succeeded (tx: ${txId}) but database update failed: ${lastApiError}. ` +
+          `Student has been paid. Please refresh the page.`
+        );
       }
 
       setLastTxId(txId);
@@ -356,7 +456,7 @@ export default function SponsorDashboardPage() {
       clearFlashLater();
 
       await refreshContractState(activeGrant);
-      await fetchMilestones(activeGrant.appId);
+      await fetchMilestones(activeGrant.appId, activeGrant.totalMilestones);
       await fetchActiveGrant();
     } catch (err: any) {
       setError(err.message || 'Failed to approve milestone');
@@ -391,7 +491,7 @@ export default function SponsorDashboardPage() {
 
       setSuccess(`Milestone ${milestone.milestoneIndex + 1} rejected`);
       clearFlashLater();
-      await fetchMilestones(activeGrant.appId);
+      await fetchMilestones(activeGrant.appId, activeGrant.totalMilestones);
     } catch (err: any) {
       setError(err.message || 'Failed to reject milestone');
       clearFlashLater();

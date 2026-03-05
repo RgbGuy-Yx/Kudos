@@ -3,6 +3,7 @@ import clientPromise from '@/lib/mongodb';
 import { verifyJWT } from '@/lib/auth';
 import { GrantDocument, ProjectDocument } from '@/lib/models/Grant';
 import { ObjectId } from 'mongodb';
+import { verifyAppOnChain } from '@/lib/algorand';
 
 function serializeGrant(grant: GrantDocument) {
   return {
@@ -39,25 +40,44 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { projectId, studentWallet, proposedBudget, totalMilestones, appId, txId } = body;
+    const { projectId, studentWallet, proposedBudget, appId, txId, fundTxId } = body;
 
-    if (!projectId || !studentWallet || !proposedBudget || !totalMilestones || !appId || !txId) {
+    if (!projectId || !studentWallet || !proposedBudget || !appId || !txId) {
       return NextResponse.json(
-        { error: 'projectId, studentWallet, proposedBudget, totalMilestones, appId and txId are required' },
+        { error: 'projectId, studentWallet, proposedBudget, appId and txId are required' },
         { status: 400 }
       );
     }
 
-    const parsedMilestones = Number(totalMilestones);
-    if (!Number.isInteger(parsedMilestones) || parsedMilestones <= 0) {
+    // Reject demo/fake appIds on the server
+    const parsedAppId = Number(appId);
+    if (parsedAppId >= 900000000) {
       return NextResponse.json(
-        { error: 'totalMilestones must be a positive integer' },
+        { error: 'Demo application IDs cannot be used to create real grants' },
+        { status: 400 }
+      );
+    }
+
+    // Verify the on-chain application exists and sponsor matches the authenticated user
+    const verification = await verifyAppOnChain(parsedAppId, payload.walletAddress);
+    if (!verification.valid) {
+      return NextResponse.json(
+        { error: `On-chain verification failed: ${verification.error}` },
         { status: 400 }
       );
     }
 
     const client = await clientPromise;
     const db = client.db('trustfundx');
+
+    // Idempotency: if a grant with this appId already exists, return it (handles retry after partial failure)
+    const existingByAppId = await db.collection<GrantDocument>('grants').findOne({ appId: parsedAppId });
+    if (existingByAppId) {
+      return NextResponse.json(
+        { message: 'Grant already exists for this application', grant: serializeGrant(existingByAppId) },
+        { status: 200 }
+      );
+    }
 
     const existingActive = await db.collection<GrantDocument>('grants').findOne({
       sponsorWallet: payload.walletAddress,
@@ -83,6 +103,11 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const derivedMilestones = project.proposalData?.funding?.milestones?.length || 3;
+    const parsedMilestones = Number.isInteger(derivedMilestones) && derivedMilestones > 0
+      ? derivedMilestones
+      : 3;
+
     const now = new Date();
     const grant: GrantDocument = {
       sponsorWallet: payload.walletAddress,
@@ -104,6 +129,16 @@ export async function POST(req: NextRequest) {
           createdAt: now,
           amount: Number(proposedBudget),
         },
+        ...(fundTxId
+          ? [
+              {
+                txId: fundTxId,
+                type: 'FUND_ESCROW' as const,
+                createdAt: now,
+                amount: Number(proposedBudget),
+              },
+            ]
+          : []),
       ],
       creationNotifiedToStudent: false,
       createdAt: now,

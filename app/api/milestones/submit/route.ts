@@ -77,6 +77,31 @@ export async function POST(req: NextRequest) {
     });
 
     if (existing) {
+      // Allow resubmission if the previous submission was rejected
+      if (existing.status === 'rejected') {
+        await milestonesCollection.updateOne(
+          { _id: existing._id },
+          {
+            $set: {
+              proofType: proofFileUrl ? 'file_upload' : 'github_link',
+              proofLink: proofLink || undefined,
+              proofFileUrl: proofFileUrl || undefined,
+              proofFileName: proofFileName || undefined,
+              proofFileMimeType: proofFileMimeType || undefined,
+              description,
+              submittedAt: new Date(),
+              status: 'pending',
+              rejectedReason: undefined,
+            } as Partial<MilestoneSubmission>,
+          }
+        );
+
+        return NextResponse.json({
+          message: 'Milestone resubmitted successfully',
+          milestoneId: existing._id,
+        });
+      }
+
       return NextResponse.json(
         { error: 'Milestone already submitted', milestone: existing },
         { status: 409 }

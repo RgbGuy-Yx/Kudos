@@ -40,7 +40,8 @@ export async function POST(req: NextRequest) {
       {
         $set: {
           status: 'COMPLETED',
-          milestoneIndex: 3,
+          milestoneIndex: grant.totalMilestones,
+          escrowBalance: 0,
           completedAt: now,
           updatedAt: now,
         },

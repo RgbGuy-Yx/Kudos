@@ -18,6 +18,33 @@ interface ProjectDetails {
   proposedBudget: number;
   studentWallet: string;
   githubLink: string;
+  milestones?: { title: string; amount: number; targetDate: string }[];
+  proposalData?: {
+    aboutYou?: {
+      fullName?: string;
+      email?: string;
+      university?: string;
+      degreeProgram?: string;
+      yearOfStudy?: string;
+      currentSemester?: string;
+      graduationYear?: string;
+      githubProfile?: string;
+      linkedinUrl?: string;
+    };
+    project?: {
+      category?: string;
+      stage?: string;
+      techStack?: string[];
+      githubRepoUrl?: string;
+      shortDescription?: string;
+    };
+    funding?: {
+      expectedTimeline?: string;
+      expectedCost?: number;
+      fundsUsage?: string;
+      milestones?: { title: string; amount: number; targetDate: string }[];
+    };
+  };
   status: string;
 }
 
@@ -37,7 +64,6 @@ export default function ProjectDetailsPage() {
   const [grantForm, setGrantForm] = useState({
     studentWallet: '',
     totalAmount: '',
-    milestonesRequired: '',
   });
   const [grantFormError, setGrantFormError] = useState('');
 
@@ -64,7 +90,6 @@ export default function ProjectDetailsPage() {
       setGrantForm({
         studentWallet: data.project.studentWallet,
         totalAmount: String(data.project.expectedCost ?? data.project.proposedBudget),
-        milestonesRequired: '3',
       });
     } catch (err: any) {
       setError(err.message || 'Failed to load project details');
@@ -103,20 +128,18 @@ export default function ProjectDetailsPage() {
 
     const studentWallet = grantForm.studentWallet.trim();
     const totalAmount = Number(grantForm.totalAmount);
-    const milestonesRequired = Number(grantForm.milestonesRequired);
+    const milestoneCount =
+      project.proposalData?.funding?.milestones?.length ||
+      project.milestones?.length ||
+      3;
 
-    if (!studentWallet || !grantForm.totalAmount || !grantForm.milestonesRequired) {
-      setGrantFormError('All three fields are required.');
+    if (!studentWallet || !grantForm.totalAmount) {
+      setGrantFormError('Student wallet and total amount are required.');
       return;
     }
 
     if (!Number.isFinite(totalAmount) || totalAmount <= 0) {
       setGrantFormError('Total amount must be greater than 0.');
-      return;
-    }
-
-    if (!Number.isInteger(milestonesRequired) || milestonesRequired <= 0) {
-      setGrantFormError('Milestone required must be a positive whole number.');
       return;
     }
 
@@ -133,7 +156,7 @@ export default function ProjectDetailsPage() {
         accountAddress,
         studentWallet,
         algoToMicroalgos(totalAmount),
-        milestonesRequired,
+        milestoneCount,
         signTransaction
       );
 
@@ -145,23 +168,44 @@ export default function ProjectDetailsPage() {
         signTransaction
       );
 
-      const response = await fetch('/api/grants/create', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          projectId: project.id,
-          studentWallet,
-          proposedBudget: totalAmount,
-          totalMilestones: milestonesRequired,
-          appId,
-          txId,
-          fundTxId,
-        }),
-      });
+      // Step 3: Register grant in database
+      // Retry API call up to 3 times — on-chain is already funded, we MUST record it
+      let apiSuccess = false;
+      let lastApiError = '';
+      for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+          const response = await fetch('/api/grants/create', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              projectId: project.id,
+              studentWallet,
+              proposedBudget: totalAmount,
+              totalMilestones: milestoneCount,
+              appId,
+              txId,
+              fundTxId,
+            }),
+          });
 
-      const data = await response.json();
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to create grant');
+          const data = await response.json();
+          if (!response.ok && response.status !== 200) {
+            // 200 = idempotent hit (grant already exists for this appId)
+            lastApiError = data.error || 'Failed to create grant';
+            continue;
+          }
+          apiSuccess = true;
+          break;
+        } catch (e: any) {
+          lastApiError = e.message || 'Network error';
+        }
+      }
+
+      if (!apiSuccess) {
+        throw new Error(
+          `On-chain contract funded (appId: ${appId}, tx: ${fundTxId}) but database registration failed: ${lastApiError}. ` +
+          `Your funds are safe in escrow. Please contact support with appId: ${appId}.`
+        );
       }
 
       setSuccess('Grant created successfully');
@@ -187,6 +231,11 @@ export default function ProjectDetailsPage() {
   if (!user || user.role !== 'sponsor' || !project) {
     return null;
   }
+
+  const aboutYou = project.proposalData?.aboutYou;
+  const projectMeta = project.proposalData?.project;
+  const funding = project.proposalData?.funding;
+  const milestones = project.milestones || funding?.milestones || [];
 
   return (
     <main className="min-h-screen bg-slate-950 px-4 py-8 text-slate-100 md:px-8">
@@ -219,6 +268,24 @@ export default function ProjectDetailsPage() {
               <p className="mt-2 text-sm leading-7 text-slate-300">{project.abstract}</p>
             </div>
 
+            {(aboutYou?.fullName || aboutYou?.university || aboutYou?.degreeProgram) && (
+              <div>
+                <h2 className="text-sm font-semibold text-slate-300">Student Profile</h2>
+                <div className="mt-2 grid gap-3 md:grid-cols-2">
+                  <div className="rounded-xl border border-slate-800 bg-slate-950 p-4">
+                    <p className="text-xs text-slate-400">Name</p>
+                    <p className="mt-1 text-sm text-slate-100">{aboutYou?.fullName || 'N/A'}</p>
+                  </div>
+                  <div className="rounded-xl border border-slate-800 bg-slate-950 p-4">
+                    <p className="text-xs text-slate-400">Academic</p>
+                    <p className="mt-1 text-sm text-slate-100">
+                      {[aboutYou?.degreeProgram, aboutYou?.university].filter(Boolean).join(' • ') || 'N/A'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
             <div>
               <h2 className="text-sm font-semibold text-slate-300">Expected Deliveribles</h2>
               <p className="mt-2 text-sm leading-7 text-slate-300">{project.expectedDeliverables}</p>
@@ -227,17 +294,72 @@ export default function ProjectDetailsPage() {
             <div className="grid gap-4 md:grid-cols-2">
               <div className="rounded-xl border border-slate-800 bg-slate-950 p-4">
                 <p className="text-xs text-slate-400">Expected Timeline</p>
-                <p className="mt-1 text-sm text-slate-100">{project.expectedTimeline}</p>
+                <p className="mt-1 text-sm text-slate-100">{funding?.expectedTimeline || project.expectedTimeline}</p>
               </div>
               <div className="rounded-xl border border-slate-800 bg-slate-950 p-4">
                 <p className="text-xs text-slate-400">Expected Cost</p>
-                <p className="mt-1 text-sm text-slate-100">{project.expectedCost} ALGO</p>
+                <p className="mt-1 text-sm text-slate-100">{funding?.expectedCost ?? project.expectedCost} ALGO</p>
               </div>
               <div className="rounded-xl border border-slate-800 bg-slate-950 p-4 md:col-span-2">
                 <p className="text-xs text-slate-400">Trust Score</p>
                 <p className="mt-1 text-sm text-slate-100">{project.trustScore}/100</p>
               </div>
             </div>
+
+            {(projectMeta?.category || projectMeta?.stage || (projectMeta?.techStack?.length ?? 0) > 0) && (
+              <div>
+                <h2 className="text-sm font-semibold text-slate-300">Project Metadata</h2>
+                <div className="mt-2 grid gap-3 md:grid-cols-2">
+                  <div className="rounded-xl border border-slate-800 bg-slate-950 p-4">
+                    <p className="text-xs text-slate-400">Category / Stage</p>
+                    <p className="mt-1 text-sm text-slate-100">
+                      {[projectMeta?.category, projectMeta?.stage].filter(Boolean).join(' • ') || 'N/A'}
+                    </p>
+                  </div>
+                  <div className="rounded-xl border border-slate-800 bg-slate-950 p-4">
+                    <p className="text-xs text-slate-400">Tech Stack</p>
+                    <p className="mt-1 text-sm text-slate-100">
+                      {projectMeta?.techStack?.length ? projectMeta.techStack.join(', ') : 'N/A'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {funding?.fundsUsage && (
+              <div>
+                <h2 className="text-sm font-semibold text-slate-300">Funding Utilization Plan</h2>
+                <p className="mt-2 text-sm leading-7 text-slate-300">{funding.fundsUsage}</p>
+              </div>
+            )}
+
+            {milestones.length > 0 && (
+              <div>
+                <h2 className="text-sm font-semibold text-slate-300">Student Milestone Plan</h2>
+                <div className="mt-2 overflow-hidden rounded-xl border border-slate-800">
+                  <table className="w-full text-sm text-left">
+                    <thead className="bg-slate-950">
+                      <tr className="text-slate-400">
+                        <th className="px-4 py-2 font-medium">Milestone</th>
+                        <th className="px-4 py-2 font-medium">Amount</th>
+                        <th className="px-4 py-2 font-medium">Target Date</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {milestones.map((milestone, index) => (
+                        <tr key={`${milestone.title}-${index}`} className="border-t border-slate-800 bg-slate-900/40">
+                          <td className="px-4 py-2 text-slate-200">{milestone.title}</td>
+                          <td className="px-4 py-2 text-slate-200">{milestone.amount} ALGO</td>
+                          <td className="px-4 py-2 text-slate-400">
+                            {milestone.targetDate ? new Date(milestone.targetDate).toLocaleDateString() : 'N/A'}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
 
             <div>
               <h2 className="text-sm font-semibold text-slate-300">GitHub Link</h2>
@@ -260,7 +382,7 @@ export default function ProjectDetailsPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
           <div className="w-full max-w-lg rounded-xl border border-slate-700 bg-slate-900 p-5">
             <h3 className="text-lg font-semibold text-white">Create Grant</h3>
-            <p className="mt-1 text-sm text-slate-400">Provide all required parameters to continue.</p>
+            <p className="mt-1 text-sm text-slate-400">Student-defined milestones will be used automatically.</p>
 
             <div className="mt-4 space-y-3">
               <div>
@@ -286,17 +408,11 @@ export default function ProjectDetailsPage() {
                 />
               </div>
 
-              <div>
-                <label className="mb-1 block text-xs text-slate-400">Milestone required</label>
-                <input
-                  type="number"
-                  min="1"
-                  step="1"
-                  value={grantForm.milestonesRequired}
-                  onChange={(event) => setGrantForm((prev) => ({ ...prev, milestonesRequired: event.target.value }))}
-                  className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-white outline-none"
-                  placeholder="Enter number of milestones"
-                />
+              <div className="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5">
+                <p className="text-xs text-slate-400">Milestones to be created</p>
+                <p className="mt-1 text-sm text-slate-100">
+                  {milestones.length > 0 ? milestones.length : 3}
+                </p>
               </div>
             </div>
 

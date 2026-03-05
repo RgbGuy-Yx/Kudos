@@ -95,7 +95,7 @@ export default function ActiveGrantView({
             disabled={deletingGrant}
             className="rounded-lg border border-rose-700 bg-rose-900/30 px-3 py-2 text-xs font-semibold text-rose-200 hover:bg-rose-900/50 disabled:opacity-50"
           >
-            {deletingGrant ? 'Deleting...' : 'Delete Active Grant'}
+            {deletingGrant ? 'Cancelling...' : 'Cancel & Clawback'}
           </button>
         </div>
       </div>

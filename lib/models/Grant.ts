@@ -1,7 +1,40 @@
 import { ObjectId } from 'mongodb';
 
 export type ProjectStatus = 'OPEN' | 'IN_GRANT' | 'CLOSED';
-export type GrantStatus = 'ACTIVE' | 'COMPLETED';
+export type GrantStatus = 'ACTIVE' | 'COMPLETED' | 'CANCELLED';
+
+export interface ProposalMilestone {
+  title: string;
+  amount: number;
+  targetDate: string;
+}
+
+export interface ProposalData {
+  aboutYou?: {
+    fullName?: string;
+    email?: string;
+    university?: string;
+    degreeProgram?: string;
+    yearOfStudy?: string;
+    currentSemester?: string;
+    graduationYear?: string;
+    githubProfile?: string;
+    linkedinUrl?: string;
+  };
+  project?: {
+    category?: string;
+    stage?: string;
+    techStack?: string[];
+    githubRepoUrl?: string;
+    shortDescription?: string;
+  };
+  funding?: {
+    expectedTimeline?: string;
+    expectedCost?: number;
+    fundsUsage?: string;
+    milestones?: ProposalMilestone[];
+  };
+}
 
 export interface ProjectDocument {
   _id?: ObjectId;
@@ -15,6 +48,7 @@ export interface ProjectDocument {
   proposedBudget: number;
   studentWallet: string;
   githubLink: string;
+  proposalData?: ProposalData;
   status: ProjectStatus;
   createdAt: Date;
   updatedAt: Date;
@@ -22,7 +56,7 @@ export interface ProjectDocument {
 
 export interface GrantTransaction {
   txId: string;
-  type: 'CREATE_GRANT' | 'FUND_ESCROW' | 'APPROVE_MILESTONE';
+  type: 'CREATE_GRANT' | 'FUND_ESCROW' | 'APPROVE_MILESTONE' | 'EMERGENCY_CLAWBACK';
   createdAt: Date;
   amount?: number;
   milestoneIndex?: number;

@@ -58,26 +58,26 @@ export default function LoginPage() {
   return (
     <>
       <Navbar />
-      <main className="relative px-4 py-28 md:px-16 lg:px-24 xl:px-32 min-h-[calc(100vh-72px)] flex items-center justify-center bg-[url('/assets/dark-hero-gradient.svg')] bg-no-repeat bg-cover">
-        <div className="absolute inset-0 bg-[#050315]/80" />
-        <div className="relative w-full max-w-5xl grid md:grid-cols-2 border border-slate-700/60 rounded-2xl overflow-hidden bg-slate-900/70 backdrop-blur-sm shadow-2xl shadow-black/30">
-          <div className="p-8 md:p-10 bg-slate-900/80 border-b md:border-b-0 md:border-r border-slate-700/70">
-            <p className="text-sm text-slate-400">Welcome Back</p>
-            <h1 className="text-4xl font-semibold text-white mt-2">Login to Kudos</h1>
-            <p className="mt-4 text-sm/6 text-slate-300">
+      <main className="relative px-4 py-28 md:px-16 lg:px-24 xl:px-32 min-h-[calc(100vh-72px)] flex items-center justify-center bg-[url('/assets/color-splash-light.svg')] dark:bg-[url('/assets/color-splash.svg')] bg-no-repeat bg-cover bg-center">
+        <div className="absolute inset-0 bg-purple-50/65 dark:bg-[#140824]/72" />
+        <div className="relative w-full max-w-5xl grid md:grid-cols-2 border border-slate-300 dark:border-slate-700/60 rounded-2xl overflow-hidden bg-white/85 dark:bg-slate-900/70 backdrop-blur-sm shadow-2xl shadow-slate-300/40 dark:shadow-black/30">
+          <div className="p-8 md:p-10 bg-white/80 dark:bg-slate-900/80 border-b md:border-b-0 md:border-r border-slate-300 dark:border-slate-700/70">
+            <p className="text-sm text-slate-600 dark:text-slate-400">Welcome Back</p>
+            <h1 className="text-4xl font-semibold text-slate-900 dark:text-white mt-2">Login to Kudos</h1>
+            <p className="mt-4 text-sm/6 text-slate-700 dark:text-slate-300">
               Connect your wallet to access sponsor or student dashboards and continue your milestone workflow.
             </p>
 
             <div className="mt-8 space-y-4">
-              <div className="flex items-center gap-3 text-slate-300">
+              <div className="flex items-center gap-3 text-slate-700 dark:text-slate-300">
                 <WalletIcon className="size-5 text-purple-400" />
                 <span>Pera Wallet authentication</span>
               </div>
-              <div className="flex items-center gap-3 text-slate-300">
+              <div className="flex items-center gap-3 text-slate-700 dark:text-slate-300">
                 <ShieldCheckIcon className="size-5 text-purple-400" />
                 <span>Wallet-session sync protection</span>
               </div>
-              <div className="flex items-center gap-3 text-slate-300">
+              <div className="flex items-center gap-3 text-slate-700 dark:text-slate-300">
                 <WorkflowIcon className="size-5 text-purple-400" />
                 <span>Role-based dashboard routing</span>
               </div>
@@ -85,8 +85,8 @@ export default function LoginPage() {
           </div>
 
           <div className="p-8 md:p-10">
-            <h2 className="text-2xl font-semibold text-white mb-2">Wallet Sign In</h2>
-            <p className="text-slate-300 mb-6 text-sm">
+            <h2 className="text-2xl font-semibold text-slate-900 dark:text-white mb-2">Wallet Sign In</h2>
+            <p className="text-slate-700 dark:text-slate-300 mb-6 text-sm">
               Use the same wallet you registered with.
             </p>
 
@@ -110,9 +110,9 @@ export default function LoginPage() {
               {loading ? 'Connecting...' : 'Connect Wallet & Login'}
             </button>
 
-            <p className="text-center text-sm text-slate-300 mt-6">
+            <p className="text-center text-sm text-slate-700 dark:text-slate-300 mt-6">
               Don&apos;t have an account?{' '}
-              <Link href="/signup" className="text-purple-300 hover:text-purple-200 hover:underline font-semibold">
+              <Link href="/signup" className="text-purple-600 dark:text-purple-300 hover:text-purple-700 dark:hover:text-purple-200 hover:underline font-semibold">
                 Sign up here
               </Link>
             </p>

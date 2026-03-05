@@ -54,6 +54,26 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Active grant not found for this milestone' }, { status: 404 });
     }
 
+    // Enforce sequential milestone approval: only approve the current milestone in order
+    if (action === 'APPROVE') {
+      if (milestone.milestoneIndex !== grant.milestoneIndex) {
+        return NextResponse.json(
+          {
+            error: `Cannot approve milestone ${milestone.milestoneIndex + 1} — milestone ${grant.milestoneIndex + 1} must be approved first`,
+          },
+          { status: 400 }
+        );
+      }
+
+      // Prevent double-approval: milestone must be in pending/submitted state
+      if (milestone.status !== 'pending') {
+        return NextResponse.json(
+          { error: `Milestone is already ${milestone.status}` },
+          { status: 409 }
+        );
+      }
+    }
+
     const now = new Date();
 
     await db.collection<MilestoneSubmission>('milestones').updateOne(
