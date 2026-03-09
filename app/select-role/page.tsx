@@ -19,7 +19,7 @@ export default function SelectRolePage() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (!walletAddress) {
+    if (!walletAddress && typeof window !== 'undefined') {
       router.push('/login');
     }
   }, [walletAddress, router]);
