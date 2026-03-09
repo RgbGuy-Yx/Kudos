@@ -1,15 +1,21 @@
-'use client';
-export const dynamic = 'force-dynamic';
 
-import { useState, useEffect } from 'react';
+import { Suspense, useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { UserRole } from '@/lib/types';
 
 export default function SelectRolePage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <SelectRoleContent />
+    </Suspense>
+  );
+}
+
+function SelectRoleContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const walletAddress = searchParams.get('wallet');
-  
+
   const [formData, setFormData] = useState({
     role: 'student' as UserRole,
     name: '',
@@ -27,7 +33,7 @@ export default function SelectRolePage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!walletAddress) {
       setError('Wallet address not found');
       return;
@@ -53,8 +59,8 @@ export default function SelectRolePage() {
       }
 
       // Registration successful, redirect to dashboard
-      const dashboardRoute = formData.role === 'sponsor' 
-        ? '/sponsor/dashboard' 
+      const dashboardRoute = formData.role === 'sponsor'
+        ? '/sponsor/dashboard'
         : '/dashboard/student';
       router.push(dashboardRoute);
     } catch (err: any) {
