@@ -64,7 +64,9 @@ export default function SelectRolePage() {
     }
   };
 
-  if (!walletAddress) return null;
+  if (!walletAddress) {
+    return <div>Loading...</div>;
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
