@@ -87,15 +87,15 @@ export default function HeroSection() {
         <section id="home" className="flex flex-col items-center justify-center">
             <div className="flex items-center gap-2 text-gray-500 mt-32">
                 <TrendingUpIcon className="size-4.5" />
-                <span>Built for bold sponsors and student builders</span>
+                <span>Join a growing community of sponsors and builders</span>
             </div>
 
             <h1 className="text-center text-5xl/17 md:text-[64px]/20 font-semibold max-w-2xl m-2">
-                Back great ideas. Release funds with proof.
+                Fund ideas. Ship <span className="text-purple-500">proof</span>. Get paid.
             </h1>
 
             <p className="text-center text-base text-gray-500 max-w-md mt-2">
-                Simple escrow grants with milestone checks and transparent payouts.
+                Sponsors fund confidently, students build faster. Every milestone is proof-driven and every payout is verifiable on Algorand.
             </p>
 
             <form className="focus-within:ring-2 focus-within:ring-gray-300 border border-gray-200 rounded-xl max-w-2xl w-full mt-8">

@@ -50,12 +50,12 @@ export default function Home() {
           </div>
 
           <h1 className="mt-2 text-5xl/15 md:text-[64px]/19 font-semibold max-w-2xl">
-            Transparent grants with milestone-based
-            <span className="bg-linear-to-r from-[#923FEF] dark:from-[#C99DFF] to-[#C35DE8] dark:to-[#E1C9FF] bg-clip-text text-transparent"> escrow </span>
+            Fund bold ideas with
+            <span className="bg-linear-to-r from-[#923FEF] dark:from-[#C99DFF] to-[#C35DE8] dark:to-[#E1C9FF] bg-clip-text text-transparent"> trustless </span>
             payouts
           </h1>
           <p className="text-base dark:text-slate-300 max-w-lg mt-2">
-            Sponsors fund confidently, students build faster. Every milestone is proof-driven and every payout is verifiable on Algorand.
+            Milestone-based escrow grants on Algorand. Transparent, verifiable, and built for builders.
           </p>
 
           <div className="flex items-center gap-4 mt-8">
