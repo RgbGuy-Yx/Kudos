@@ -118,7 +118,11 @@ export default function ProjectDetailsPage() {
   }, [loadProject, loading, user]);
 
   const handleCreateGrant = async () => {
-    if (!project) return;
+    if (!project) {
+      setError('Project not loaded. Please refresh.');
+      clearFlashLater();
+      return;
+    }
 
     if (!accountAddress || !isConnected) {
       setError('Connect wallet to create a grant');
@@ -152,13 +156,26 @@ export default function ProjectDetailsPage() {
       }
 
       // Step 1: Create the escrow contract application
-      const { txId, appId } = await createApplication(
-        accountAddress,
-        studentWallet,
-        algoToMicroalgos(totalAmount),
-        milestoneCount,
-        signTransaction
-      );
+      let txId, appId;
+      try {
+        const result = await createApplication(
+          accountAddress,
+          studentWallet,
+          algoToMicroalgos(totalAmount),
+          milestoneCount,
+          signTransaction
+        );
+        txId = result.txId;
+        appId = result.appId;
+      } catch (err: any) {
+        if (err?.message?.includes('has 0 ALGO balance')) {
+          setError('Your wallet has 0 ALGO balance on testnet. Please fund your wallet and retry.');
+          clearFlashLater();
+          setCreating(false);
+          return;
+        }
+        throw err;
+      }
 
       // Step 2: Fund the escrow with the full grant amount
       const fundTxId = await fundContract(
@@ -202,10 +219,12 @@ export default function ProjectDetailsPage() {
       }
 
       if (!apiSuccess) {
-        throw new Error(
+        setError(
           `On-chain contract funded (appId: ${appId}, tx: ${fundTxId}) but database registration failed: ${lastApiError}. ` +
           `Your funds are safe in escrow. Please contact support with appId: ${appId}.`
         );
+        clearFlashLater();
+        return;
       }
 
       setSuccess('Grant created successfully');
@@ -213,7 +232,8 @@ export default function ProjectDetailsPage() {
       clearFlashLater();
       router.push('/sponsor/dashboard');
     } catch (err: any) {
-      setError(err.message || 'Failed to create grant');
+      setError('Grant creation failed: ' + (err.message || 'Unknown error. See console for details.'));
+      console.error('Grant creation error:', err);
       clearFlashLater();
     } finally {
       setCreating(false);

@@ -38,8 +38,8 @@ export default function LoginPage() {
         }
 
         if (data.needsRoleSelection) {
-          // New user, redirect to role selection
-          router.push(`/select-role?wallet=${walletAddress}`);
+          // New user, redirect to signup page
+          router.push(`/signup?wallet=${walletAddress}`);
         } else {
           // Existing user, redirect to dashboard
           const dashboardRoute = data.user.role === 'sponsor' 

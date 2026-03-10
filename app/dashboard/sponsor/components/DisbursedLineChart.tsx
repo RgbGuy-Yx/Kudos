@@ -30,8 +30,8 @@ export default function DisbursedLineChart({ data }: DisbursedLineChartProps) {
         </span>
       </div>
 
-      <div className="mt-4 h-64 rounded-lg border border-white/10 bg-transparent p-2">
-        <ResponsiveContainer width="100%" height="100%">
+      <div className="mt-4 h-64 rounded-lg border border-white/10 bg-transparent p-2" style={{ minWidth: 0, minHeight: 0 }}>
+        <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
           <AreaChart data={data} margin={{ top: 10, right: 8, left: -14, bottom: 0 }}>
             <defs>
               <linearGradient id="kudosDisbursedArea" x1="0" y1="0" x2="0" y2="1">

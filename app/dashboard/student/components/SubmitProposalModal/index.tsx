@@ -99,6 +99,7 @@ export default function SubmitProposalModal({
   const [step2, setStep2] = useState<Step2Data>(defaultStep2);
   const [step3, setStep3] = useState<Step3Data>(defaultStep3);
 
+  // Load from session storage if present
   useEffect(() => {
     if (open) {
       setStep(0);
@@ -107,12 +108,19 @@ export default function SubmitProposalModal({
       setSubmitted(false);
       setAgreed(false);
       setError(null);
+      let sessionData = null;
+      try {
+        sessionData = JSON.parse(sessionStorage.getItem('proposalDraft') || '{}');
+      } catch {}
       setStep1((prev) => ({
         ...defaultStep1,
         ...prev,
+        ...sessionData?.step1,
         email: initialEmail || prev.email || '',
         fullName: initialName || prev.fullName || '',
       }));
+      setStep2((prev) => ({ ...defaultStep2, ...prev, ...sessionData?.step2 }));
+      setStep3((prev) => ({ ...defaultStep3, ...prev, ...sessionData?.step3 }));
     }
   }, [open, initialEmail, initialName]);
 
@@ -156,7 +164,10 @@ export default function SubmitProposalModal({
   };
 
   const goNext = () => {
-    if (!isCurrentStepValid()) return;
+    if (!isCurrentStepValid()) {
+      setError('Please fill all required fields before proceeding.');
+      return;
+    }
     setError(null);
     if (step < 3) {
       setDir(1);
@@ -172,7 +183,10 @@ export default function SubmitProposalModal({
   };
 
   const handleSubmit = async () => {
-    if (!isCurrentStepValid() || submitting) return;
+    if (!isCurrentStepValid() || submitting) {
+      setError('Please fill all required fields before submitting.');
+      return;
+    }
     setSubmitting(true);
     setError(null);
 
@@ -227,6 +241,7 @@ export default function SubmitProposalModal({
     setStep1({ ...defaultStep1, email: initialEmail || '', fullName: initialName || '' });
     setStep2(defaultStep2);
     setStep3(defaultStep3);
+    sessionStorage.removeItem('proposalDraft');
     onClose();
   };
 
@@ -329,25 +344,49 @@ export default function SubmitProposalModal({
             ) : (
               <div />
             )}
-            {step < 3 ? (
-              <button
-                onClick={goNext}
-                className="px-5 py-2.5 rounded-xl bg-[#7C3AED] text-sm font-medium text-white hover:bg-[#6D28D9] transition"
-              >
-                Next
-              </button>
-            ) : (
-              <button
-                onClick={handleSubmit}
-                disabled={!isCurrentStepValid() || submitting}
-                className="px-5 py-2.5 rounded-xl bg-[#7C3AED] text-sm font-medium text-white hover:bg-[#6D28D9] transition disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2"
-              >
-                {submitting && (
-                  <span className="size-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                )}
-                Submit Proposal
-              </button>
-            )}
+            <div className="flex gap-2">
+              {step < 3 ? (
+                <>
+                  <button
+                    onClick={goNext}
+                    className="px-5 py-2.5 rounded-xl bg-[#7C3AED] text-sm font-medium text-white hover:bg-[#6D28D9] transition"
+                  >
+                    Next
+                  </button>
+                  <button
+                    onClick={() => {
+                      sessionStorage.setItem('proposalDraft', JSON.stringify({ step1, step2, step3 }));
+                      setError('Draft saved in session.');
+                    }}
+                    className="px-5 py-2.5 rounded-xl bg-[#A855F7] text-sm font-medium text-white hover:bg-[#9333EA] transition"
+                  >
+                    Save Changes
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    onClick={handleSubmit}
+                    disabled={!isCurrentStepValid() || submitting}
+                    className="px-5 py-2.5 rounded-xl bg-[#7C3AED] text-sm font-medium text-white hover:bg-[#6D28D9] transition disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2"
+                  >
+                    {submitting && (
+                      <span className="size-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    )}
+                    Submit Proposal
+                  </button>
+                  <button
+                    onClick={() => {
+                      sessionStorage.setItem('proposalDraft', JSON.stringify({ step1, step2, step3 }));
+                      setError('Draft saved in session.');
+                    }}
+                    className="px-5 py-2.5 rounded-xl bg-[#A855F7] text-sm font-medium text-white hover:bg-[#9333EA] transition"
+                  >
+                    Save Changes
+                  </button>
+                </>
+              )}
+            </div>
           </div>
         )}
       </motion.div>
