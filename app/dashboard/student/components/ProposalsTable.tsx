@@ -16,6 +16,12 @@ interface Proposal {
   trustScore?: number;
   createdAt: string;
   updatedAt: string;
+  techStack?: string | string[];
+  category?: string;
+  stage?: string;
+  fundsUsage?: string;
+  studentProfile?: string;
+  milestonePlan?: string;
 }
 
 interface ProposalsTableProps {
