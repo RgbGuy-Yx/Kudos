@@ -18,12 +18,12 @@ export default function LoginPage() {
     try {
       setLoading(true);
       setError('');
-      
+
       const accounts = await connectWallet();
-      
+
       if (accounts.length > 0) {
         const walletAddress = accounts[0];
-        
+
         // Check if wallet exists in database
         const response = await fetch('/api/auth/connect', {
           method: 'POST',
@@ -37,13 +37,13 @@ export default function LoginPage() {
           throw new Error(data.error || 'Connection failed');
         }
 
-        if (data.needsRoleSelection) {
-          // New user, redirect to signup page
+        if (!data.user) {
+          // No account, redirect to signup
           router.push(`/signup?wallet=${walletAddress}`);
         } else {
           // Existing user, redirect to dashboard
-          const dashboardRoute = data.user.role === 'sponsor' 
-            ? '/sponsor/dashboard' 
+          const dashboardRoute = data.user.role === 'sponsor'
+            ? '/sponsor/dashboard'
             : '/dashboard/student';
           router.push(dashboardRoute);
         }
