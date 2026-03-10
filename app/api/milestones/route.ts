@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import clientPromise from '@/lib/mongodb';
 import { verifyJWT } from '@/lib/auth';
 import { MilestoneSubmission } from '@/lib/models/Milestone';
+import { GrantDocument } from '@/lib/models/Grant';
 
 export async function GET(req: NextRequest) {
   try {
@@ -28,13 +29,24 @@ export async function GET(req: NextRequest) {
     const milestonesCollection = db.collection<MilestoneSubmission>('milestones');
 
     // Build query based on role
-    const query: any = { appId: parseInt(appId) };
+    const parsedAppId = parseInt(appId);
+    const query: any = { appId: parsedAppId };
 
     if (payload.role === 'student') {
       // Students can only see their own milestones
       query.studentAddress = payload.walletAddress;
+    } else if (payload.role === 'sponsor') {
+      // Verify the sponsor actually owns a grant with this appId
+      const grant = await db.collection<GrantDocument>('grants').findOne({
+        appId: parsedAppId,
+        sponsorWallet: payload.walletAddress,
+      });
+      if (!grant) {
+        return NextResponse.json({ error: 'Grant not found for this app ID' }, { status: 403 });
+      }
+    } else {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
-    // Sponsors can see all milestones for their app
 
     const milestones = await milestonesCollection
       .find(query)

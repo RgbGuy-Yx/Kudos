@@ -1,31 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import clientPromise from '@/lib/mongodb';
 import { verifyJWT } from '@/lib/auth';
-import { GrantDocument, ProjectDocument } from '@/lib/models/Grant';
+import { GrantDocument, ProjectDocument, serializeGrant } from '@/lib/models/Grant';
 import { ObjectId } from 'mongodb';
-import { verifyAppOnChain } from '@/lib/algorand';
+import { verifyAppOnChain, getContractGlobalState, microalgosToAlgo } from '@/lib/algorand';
 
-function serializeGrant(grant: GrantDocument) {
-  return {
-    id: grant._id?.toString(),
-    sponsorWallet: grant.sponsorWallet,
-    studentWallet: grant.studentWallet,
-    projectId: grant.projectId.toString(),
-    projectTitle: grant.projectTitle,
-    description: grant.description,
-    githubLink: grant.githubLink,
-    proposedBudget: grant.proposedBudget,
-    appId: grant.appId,
-    status: grant.status,
-    milestoneIndex: grant.milestoneIndex,
-    totalMilestones: grant.totalMilestones,
-    escrowBalance: grant.escrowBalance,
-    transactions: grant.transactions,
-    createdAt: grant.createdAt,
-    updatedAt: grant.updatedAt,
-    completedAt: grant.completedAt,
-  };
-}
+
 
 export async function POST(req: NextRequest) {
   try {
@@ -63,6 +43,19 @@ export async function POST(req: NextRequest) {
     if (!verification.valid) {
       return NextResponse.json(
         { error: `On-chain verification failed: ${verification.error}` },
+        { status: 400 }
+      );
+    }
+
+    const contractState = await getContractGlobalState(parsedAppId);
+    if (!contractState) {
+      return NextResponse.json({ error: 'Failed to read contract state' }, { status: 400 });
+    }
+    
+    const verifiedBudget = Number(microalgosToAlgo(contractState.escrowBalance));
+    if (verifiedBudget < Number(proposedBudget)) {
+      return NextResponse.json(
+        { error: `On-chain escrow balance (${verifiedBudget} ALGO) is less than proposed budget (${proposedBudget} ALGO)` },
         { status: 400 }
       );
     }

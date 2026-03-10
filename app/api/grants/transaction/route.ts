@@ -22,6 +22,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'grantId, txId and type are required' }, { status: 400 });
     }
 
+    const ALLOWED_TX_TYPES = ['CREATE_GRANT', 'FUND_ESCROW', 'APPROVE_MILESTONE', 'EMERGENCY_CLAWBACK'] as const;
+    if (!ALLOWED_TX_TYPES.includes(type)) {
+      return NextResponse.json({ error: 'Invalid transaction type' }, { status: 400 });
+    }
+
     const transaction: GrantTransaction = {
       txId,
       type,

@@ -3,6 +3,34 @@ import { ObjectId } from 'mongodb';
 export type ProjectStatus = 'OPEN' | 'IN_GRANT' | 'CLOSED';
 export type GrantStatus = 'ACTIVE' | 'COMPLETED' | 'CANCELLED';
 
+// Shared serialization helper
+export function serializeGrant(grant: GrantDocument) {
+  return {
+    id: grant._id?.toString(),
+    sponsorWallet: grant.sponsorWallet,
+    studentWallet: grant.studentWallet,
+    projectId: grant.projectId.toString(),
+    projectTitle: grant.projectTitle,
+    description: grant.description,
+    githubLink: grant.githubLink,
+    proposedBudget: grant.proposedBudget,
+    appId: grant.appId,
+    status: grant.status,
+    milestoneIndex: grant.milestoneIndex,
+    totalMilestones: grant.totalMilestones,
+    escrowBalance: grant.escrowBalance,
+    transactions: grant.transactions,
+    createdAt: grant.createdAt,
+    updatedAt: grant.updatedAt,
+    completedAt: grant.completedAt,
+  };
+}
+
+// Shared trust score clamping
+export function clampTrustScore(score: number): number {
+  return Math.max(0, Math.min(100, Math.round(score)));
+}
+
 export interface ProposalMilestone {
   title: string;
   amount: number;

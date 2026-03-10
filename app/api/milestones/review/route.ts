@@ -2,13 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import clientPromise from '@/lib/mongodb';
 import { verifyJWT } from '@/lib/auth';
 import { MilestoneSubmission } from '@/lib/models/Milestone';
-import { GrantDocument, ProjectDocument } from '@/lib/models/Grant';
+import { GrantDocument, ProjectDocument, clampTrustScore } from '@/lib/models/Grant';
 import { NotificationDocument } from '@/lib/models/Notification';
 import { ObjectId } from 'mongodb';
+import { getContractGlobalState } from '@/lib/algorand';
 
-function clampTrustScore(score: number): number {
-  return Math.max(0, Math.min(100, Math.round(score)));
-}
 
 export async function POST(req: NextRequest) {
   try {
@@ -71,6 +69,15 @@ export async function POST(req: NextRequest) {
           { error: `Milestone is already ${milestone.status}` },
           { status: 409 }
         );
+      }
+
+      // Verify smart contract state
+      const contractState = await getContractGlobalState(grant.appId);
+      if (!contractState || contractState.currentMilestone <= milestone.milestoneIndex) {
+         return NextResponse.json(
+           { error: 'Milestone approval not verified on the blockchain. Ensure you approved it on-chain first.' },
+           { status: 400 }
+         );
       }
     }
 

@@ -28,8 +28,25 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Input length validation
+    if (typeof walletAddress !== 'string' || walletAddress.length > 120) {
+      return NextResponse.json({ error: 'Invalid wallet address' }, { status: 400 });
+    }
+    if (name && (typeof name !== 'string' || name.length > 200)) {
+      return NextResponse.json({ error: 'Name must be 200 characters or less' }, { status: 400 });
+    }
+    if (email && (typeof email !== 'string' || email.length > 320)) {
+      return NextResponse.json({ error: 'Email must be 320 characters or less' }, { status: 400 });
+    }
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return NextResponse.json({ error: 'Invalid email format' }, { status: 400 });
+    }
+    if (organization && (typeof organization !== 'string' || organization.length > 300)) {
+      return NextResponse.json({ error: 'Organization must be 300 characters or less' }, { status: 400 });
+    }
+
     const client = await clientPromise;
-    const db = client.db();
+    const db = client.db('trustfundx');
     
     // Check if user already exists
     const existingUser = await db.collection<UserDocument>('users').findOne({ 

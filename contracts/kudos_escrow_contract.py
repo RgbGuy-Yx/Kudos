@@ -65,6 +65,7 @@ class KudosEscrowContract(ARC4Contract):
 
         assert total_amount_native > UInt64(0), "total_amount must be > 0"
         assert milestone_count_native > UInt64(0), "milestone_count must be > 0"
+        assert total_amount_native >= milestone_count_native, "total_amount must be >= milestone_count"
         assert student_account != Global.zero_address, "invalid student"
 
         self.sponsor.value = Txn.sender

@@ -97,31 +97,12 @@ export async function GET(req: NextRequest) {
       .sort({ createdAt: -1 })
       .toArray();
 
-    const invalidWalletProjects = projects.filter(
-      (project) => !project.studentWallet || !algosdk.isValidAddress(project.studentWallet)
+    // Filter out projects with invalid wallets instead of silently replacing them
+    projects = projects.filter(
+      (project) => !!project.studentWallet && algosdk.isValidAddress(project.studentWallet)
     );
 
-    if (invalidWalletProjects.length > 0) {
-      await Promise.all(
-        invalidWalletProjects.map((project) =>
-          projectsCollection.updateOne(
-            { _id: project._id },
-            {
-              $set: {
-                studentWallet: generateValidWalletAddress(),
-                updatedAt: new Date(),
-              },
-            }
-          )
-        )
-      );
-
-      projects = await projectsCollection
-        .find({ status: 'OPEN' })
-        .sort({ createdAt: -1 })
-        .toArray();
-    }
-
+    // Backfill missing trust scores (non-destructive)
     const missingTrustScoreProjects = projects.filter((project) => typeof project.trustScore !== 'number');
     if (missingTrustScoreProjects.length > 0) {
       await Promise.all(
@@ -142,9 +123,14 @@ export async function GET(req: NextRequest) {
         .find({ status: 'OPEN' })
         .sort({ createdAt: -1 })
         .toArray();
+
+      projects = projects.filter(
+        (project) => !!project.studentWallet && algosdk.isValidAddress(project.studentWallet)
+      );
     }
 
-    if (projects.length === 0) {
+    // Only insert mock data in development — never in production
+    if (projects.length === 0 && process.env.NODE_ENV === 'development') {
       await projectsCollection.insertMany(createMockOpenProjects());
       projects = await projectsCollection
         .find({ status: 'OPEN' })

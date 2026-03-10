@@ -36,7 +36,7 @@ export default function SponsorLayout({
     <div className="min-h-screen bg-[url('/assets/dark-hero-gradient.svg')] bg-cover bg-top text-slate-100">
       <div className="min-h-screen bg-[#050315]/85">
         <div className="flex w-full flex-col gap-5 px-2 py-4 md:px-4 md:py-5 lg:flex-row lg:gap-6 lg:px-6 lg:py-6">
-          <aside className="h-fit w-full rounded-2xl border border-slate-700/60 bg-slate-900/70 p-5 backdrop-blur-sm lg:sticky lg:top-8 lg:w-72">
+          <aside className="min-h-screen w-full rounded-2xl border border-slate-700/60 bg-slate-900/70 py-10 px-5 backdrop-blur-sm lg:sticky lg:top-8 lg:w-72">
             <h1 className="text-xl font-semibold tracking-tight">Kudos Sponsor</h1>
             <p className="mt-1 text-xs text-slate-400">{walletAddress.slice(0, 10)}...{walletAddress.slice(-6)}</p>
             <p className="mt-4 text-xs text-slate-500">Grant operations workspace</p>

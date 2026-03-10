@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useWallet } from '@/contexts/WalletContext';
 
@@ -13,16 +13,45 @@ interface User {
   organization?: string;
 }
 
-export function useAuth(requireWalletSync = true) {
+export function useAuth(requireWalletSync = false) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [walletMismatch, setWalletMismatch] = useState(false);
   const router = useRouter();
   const { accountAddress, verifyWalletSession, disconnectWallet } = useWallet();
 
+  const handleLogout = useCallback(async () => {
+    try {
+      await fetch('/api/auth/logout', { method: 'POST' });
+      await disconnectWallet();
+      setUser(null);
+      setWalletMismatch(false);
+      router.push('/login');
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
+  }, [disconnectWallet, router]);
+
+  const fetchUser = useCallback(async () => {
+    try {
+      const response = await fetch('/api/auth/me');
+      if (response.ok) {
+        const data = await response.json();
+        setUser(data.user);
+      } else {
+        setUser(null);
+      }
+    } catch (error) {
+      console.error('Error fetching user:', error);
+      setUser(null);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     fetchUser();
-  }, []);
+  }, [fetchUser]);
 
   // Verify wallet matches session whenever wallet changes
   useEffect(() => {
@@ -49,36 +78,7 @@ export function useAuth(requireWalletSync = true) {
     } else {
       setWalletMismatch(false);
     }
-  }, [accountAddress, user, requireWalletSync, verifyWalletSession]);
-
-  const fetchUser = async () => {
-    try {
-      const response = await fetch('/api/auth/me');
-      if (response.ok) {
-        const data = await response.json();
-        setUser(data.user);
-      } else {
-        setUser(null);
-      }
-    } catch (error) {
-      console.error('Error fetching user:', error);
-      setUser(null);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleLogout = async () => {
-    try {
-      await fetch('/api/auth/logout', { method: 'POST' });
-      await disconnectWallet();
-      setUser(null);
-      setWalletMismatch(false);
-      router.push('/login');
-    } catch (error) {
-      console.error('Logout error:', error);
-    }
-  };
+  }, [accountAddress, user, requireWalletSync, verifyWalletSession, handleLogout]);
 
   const logout = handleLogout;
 

@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
     }
 
     const client = await clientPromise;
-    const db = client.db();
+    const db = client.db('trustfundx');
     
     // Check if user exists
     const user = await db.collection<UserDocument>('users').findOne({ 

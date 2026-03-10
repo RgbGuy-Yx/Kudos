@@ -50,7 +50,7 @@ export async function POST(req: NextRequest) {
 
     await db.collection<ProjectDocument>('projects').updateOne(
       { _id: grant.projectId },
-      { $set: { status: 'OPEN', updatedAt: now } }
+      { $set: { status: 'CLOSED', updatedAt: now } }
     );
 
     return NextResponse.json({ message: 'Grant marked as completed' });

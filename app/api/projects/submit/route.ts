@@ -152,6 +152,14 @@ export async function POST(req: NextRequest) {
             },
     };
 
+    const sumMilestones = parsedProposalData.funding?.milestones?.reduce((acc, m) => acc + m.amount, 0) || 0;
+    if (parsedProposalData.funding?.milestones?.length && sumMilestones !== parsedExpectedCost) {
+      return NextResponse.json(
+        { error: 'Sum of milestone amounts must equal the expected cost' },
+        { status: 400 }
+      );
+    }
+
     const abstract = buildDetailedAbstract(String(title).trim(), String(description).trim(), parsedProposalData);
 
     const client = await clientPromise;

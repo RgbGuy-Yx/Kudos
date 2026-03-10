@@ -1,12 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import clientPromise from '@/lib/mongodb';
 import { verifyJWT } from '@/lib/auth';
-import { GrantDocument, ProjectDocument } from '@/lib/models/Grant';
+import { GrantDocument, ProjectDocument, clampTrustScore } from '@/lib/models/Grant';
 import { ObjectId } from 'mongodb';
 
-function clampTrustScore(score: number): number {
-  return Math.max(0, Math.min(100, Math.round(score)));
-}
+
 
 export async function POST(req: NextRequest) {
   try {
@@ -67,7 +65,8 @@ export async function POST(req: NextRequest) {
 
     const linkedProject = await db.collection<ProjectDocument>('projects').findOne({ _id: grant.projectId });
     const currentScore = typeof linkedProject?.trustScore === 'number' ? linkedProject.trustScore : 70;
-    const nextScore = clampTrustScore(currentScore - 10);
+    // Floor at 20 to prevent repeated cancellation abuse
+    const nextScore = clampTrustScore(Math.max(20, currentScore - 10));
 
     await db.collection<ProjectDocument>('projects').updateOne(
       { _id: grant.projectId },

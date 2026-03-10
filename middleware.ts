@@ -27,18 +27,19 @@ export async function middleware(request: NextRequest) {
         return response;
       }
 
-      // Check role-based access
-      if ((pathname.startsWith('/sponsor/dashboard') || pathname.startsWith('/sponsor/projects') || pathname.startsWith('/dashboard/sponsor')) && payload.role !== 'sponsor') {
-        // Not a sponsor, redirect to their dashboard
+      // Check role-based access — sponsor paths
+      const isSponsorPath = pathname.startsWith('/sponsor/dashboard') || pathname.startsWith('/sponsor/projects') || pathname.startsWith('/dashboard/sponsor');
+      if (isSponsorPath && payload.role !== 'sponsor') {
         return NextResponse.redirect(new URL('/dashboard/student', request.url));
       }
 
+      // Redirect legacy /dashboard/sponsor to /sponsor/dashboard for sponsors
       if (pathname.startsWith('/dashboard/sponsor') && payload.role === 'sponsor') {
         return NextResponse.redirect(new URL('/sponsor/dashboard', request.url));
       }
 
+      // Check role-based access — student paths
       if (pathname.startsWith('/dashboard/student') && payload.role !== 'student') {
-        // Not a student, redirect to their dashboard
         return NextResponse.redirect(new URL('/sponsor/dashboard', request.url));
       }
 

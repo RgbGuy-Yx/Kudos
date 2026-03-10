@@ -1,29 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import clientPromise from '@/lib/mongodb';
 import { verifyJWT } from '@/lib/auth';
-import { GrantDocument } from '@/lib/models/Grant';
+import { GrantDocument, serializeGrant } from '@/lib/models/Grant';
 
-function serializeGrant(grant: GrantDocument) {
-  return {
-    id: grant._id?.toString(),
-    sponsorWallet: grant.sponsorWallet,
-    studentWallet: grant.studentWallet,
-    projectId: grant.projectId.toString(),
-    projectTitle: grant.projectTitle,
-    description: grant.description,
-    githubLink: grant.githubLink,
-    proposedBudget: grant.proposedBudget,
-    appId: grant.appId,
-    status: grant.status,
-    milestoneIndex: grant.milestoneIndex,
-    totalMilestones: grant.totalMilestones,
-    escrowBalance: grant.escrowBalance,
-    transactions: grant.transactions,
-    createdAt: grant.createdAt,
-    updatedAt: grant.updatedAt,
-    completedAt: grant.completedAt,
-  };
-}
+
 
 export async function GET(req: NextRequest) {
   try {

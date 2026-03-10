@@ -1,6 +1,7 @@
 "use client";
 import { Suspense, useState, useEffect } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
+import { useWallet } from '@/contexts/WalletContext';
 import { UserRole } from '@/lib/types';
 
 export default function SelectRolePage() {
@@ -13,8 +14,7 @@ export default function SelectRolePage() {
 
 function SelectRoleContent() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const walletAddress = searchParams.get('wallet');
+  const { accountAddress, isConnected } = useWallet();
 
   const [formData, setFormData] = useState({
     role: 'student' as UserRole,
@@ -26,16 +26,17 @@ function SelectRoleContent() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (!walletAddress && typeof window !== 'undefined') {
+    // Require wallet to be connected — don't accept wallet from URL
+    if (!isConnected && typeof window !== 'undefined') {
       router.push('/login');
     }
-  }, [walletAddress, router]);
+  }, [isConnected, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!walletAddress) {
-      setError('Wallet address not found');
+    if (!accountAddress) {
+      setError('Wallet not connected. Please connect your wallet first.');
       return;
     }
 
@@ -47,7 +48,7 @@ function SelectRoleContent() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          walletAddress,
+          walletAddress: accountAddress,
           ...formData,
         }),
       });
@@ -70,7 +71,7 @@ function SelectRoleContent() {
     }
   };
 
-  if (!walletAddress) {
+  if (!accountAddress) {
     return <div>Loading...</div>;
   }
 
@@ -81,7 +82,7 @@ function SelectRoleContent() {
           Complete Your Profile
         </h1>
         <p className="text-sm text-gray-600 text-center mb-6">
-          Wallet: {walletAddress.slice(0, 8)}...{walletAddress.slice(-6)}
+          Wallet: {accountAddress.slice(0, 8)}...{accountAddress.slice(-6)}
         </p>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -127,6 +128,7 @@ function SelectRoleContent() {
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               placeholder="Enter your name"
+              maxLength={200}
             />
           </div>
 
@@ -140,6 +142,7 @@ function SelectRoleContent() {
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               placeholder="Enter your email"
+              maxLength={320}
             />
           </div>
 
@@ -153,6 +156,7 @@ function SelectRoleContent() {
               onChange={(e) => setFormData({ ...formData, organization: e.target.value })}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               placeholder="Enter your organization"
+              maxLength={300}
             />
           </div>
 
